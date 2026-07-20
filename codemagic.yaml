@@ -20,6 +20,9 @@ workflows:
           perl -0777 -i -pe 's/(compileOptions\s*\{[^}]*\})/$1\n    kotlinOptions {\n        jvmTarget = "17"\n    }/s unless /kotlinOptions/' "$GF"
           # Bump the plugin compileSdkVersion 31 -> 36 (deps require >=33)
           perl -i -pe 's/compileSdkVersion\s+31/compileSdkVersion 36/g' "$GF"
+          # Bump the bundled TensorFlow Lite runtime so it understands ops from
+          # newer TF (our Colab-exported EfficientNet models). 2.11 is too old.
+          perl -i -pe 's/tflite_version = "2\.11\.0"/tflite_version = "2.14.0"/g' "$GF"
           echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
       - name: Fix TensorFlow namespace conflict
         script: |

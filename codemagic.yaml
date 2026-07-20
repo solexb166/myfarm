@@ -12,19 +12,17 @@ workflows:
         script: flutter pub get
       - name: Patch tflite_flutter to JVM 17
         script: |
-          set -e
           PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
           GF="$PLUGIN/android/build.gradle"
           echo "Patching: $GF"
-          echo "=== BEFORE ==="; cat "$GF"
-          # Bump Java 1.8 -> 17
-          sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g' "$GF"
-          # Add kotlinOptions jvmTarget "17" right after the targetCompatibility line
-          # (only if kotlinOptions not already present)
-          if ! grep -q "kotlinOptions" "$GF"; then
-            sed -i '/targetCompatibility JavaVersion.VERSION_17/a\        }\n        kotlinOptions {\n            jvmTarget = "17"' "$GF"
-          fi
-          echo "=== AFTER ==="; cat "$GF"
+          # Bump Java 1.8 -> 17 (perl works identically on macOS and Linux)
+          perl -i -pe 's/JavaVersion\.VERSION_1_8/JavaVersion.VERSION_17/g' "$GF"
+          # Insert kotlinOptions jvmTarget 17 after the compileOptions block (if absent)
+          perl -0777 -i -pe 's/(compileOptions\s*\{[^}]*\})/$1\n    kotlinOptions {\n        jvmTarget = "17"\n    }/s unless /kotlinOptions/' "$GF"
+          echo "=== PATCHED FILE ==="
+          cat "$GF"
+          echo "=== verify ==="
+          grep -q "jvmTarget" "$GF" && echo "OK: jvmTarget present" || echo "WARN: jvmTarget missing"
       - name: Build APK
         script: flutter build apk --release
     artifacts:

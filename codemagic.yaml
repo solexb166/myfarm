@@ -1,0 +1,30 @@
+workflows:
+  android-release:
+    name: MY FARM Android Release
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      java: 17
+    scripts:
+      - name: Fix tflite_flutter JVM target
+        script: |
+          # Ensure the tflite_flutter plugin compiles Kotlin at JVM 17 to match Java 17
+          PLUGIN_DIR=$(find /root/.pub-cache -type d -name "tflite_flutter-*" | head -1)
+          if [ -n "$PLUGIN_DIR" ]; then
+            GRADLE_FILE="$PLUGIN_DIR/android/build.gradle"
+            echo "Patching $GRADLE_FILE"
+            # replace Java 1_8 with 17
+            sed -i 's/VERSION_1_8/VERSION_17/g' "$GRADLE_FILE"
+            # add kotlinOptions jvmTarget if missing
+            if ! grep -q "kotlinOptions" "$GRADLE_FILE"; then
+              sed -i '/targetCompatibility JavaVersion.VERSION_17/a\    }\n    kotlinOptions {\n        jvmTarget = "17"' "$GRADLE_FILE"
+            fi
+            echo "--- patched compileOptions ---"
+            grep -A2 "compileOptions" "$GRADLE_FILE" || true
+          fi
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Build APK
+        script: flutter build apk --release
+    artifacts:
+      - build/**/outputs/**/*.apk

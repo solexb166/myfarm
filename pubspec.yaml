@@ -1,0 +1,39 @@
+name: my_farm
+description: MY FARM - AI agronomist in your pocket. Offline crop disease diagnosis and season planning.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # Camera & image input
+  image_picker: ^1.0.7
+  # Image decoding/resizing for model preprocessing
+  image: ^4.1.7
+  # On-device inference (offline) - runs the bundled .tflite models
+  tflite_flutter: ^0.11.0
+  # Voice (text-to-speech) for low-literacy users
+  flutter_tts: ^4.0.2
+  # Local storage so calendar + history persist
+  shared_preferences: ^2.2.2
+  # Fonts
+  google_fonts: ^6.2.1
+  # Date formatting
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_lints: ^3.0.1
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    # Trained models live here, two files per crop (<crop>.tflite + <crop>_labels.txt).
+    - assets/models/

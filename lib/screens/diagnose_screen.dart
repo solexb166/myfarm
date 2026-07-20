@@ -26,6 +26,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
   File? _image;
   bool _loading = false;
   bool _error = false;
+  String _errorDetail = '';
   bool _speaking = false;
   Diagnosis? _result;
 
@@ -64,6 +65,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
     setState(() {
       _image = File(x.path);
       _error = false;
+      _errorDetail = '';
       _result = null;
     });
   }
@@ -73,6 +75,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
     setState(() {
       _loading = true;
       _error = false;
+      _errorDetail = '';
     });
     try {
       final d = await InferenceService.classify(
@@ -86,10 +89,11 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
         _result = d;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = true;
+        _errorDetail = e.toString();
         _loading = false;
       });
     }
@@ -305,6 +309,10 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
             const SizedBox(height: 2),
             Text(t.get('errBody'),
                 style: AppText.body(13, color: AppColors.creamDim)),
+            if (_errorDetail.isNotEmpty) const SizedBox(height: 6),
+            if (_errorDetail.isNotEmpty)
+              Text(_errorDetail,
+                  style: AppText.body(11, color: AppColors.creamDim)),
           ]),
         ),
       ]),

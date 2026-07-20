@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -70,7 +71,9 @@ class InferenceService {
         List.filled(labels.length, 0.0).reshape([1, labels.length]);
     interpreter.run(input, output);
 
-    final scores = (output[0] as List).cast<double>();
+    final scores = (output[0] as List)
+        .map((e) => (e as num).toDouble())
+        .toList();
     // softmax already applied in-model; pick the top class.
     int best = 0;
     for (int i = 1; i < scores.length; i++) {
@@ -112,14 +115,20 @@ class InferenceService {
     final resized =
         img.copyResize(decoded, width: imgSize, height: imgSize);
 
-    return [
-      List.generate(imgSize, (y) {
+    // Build a [1, H, W, 3] tensor of raw 0..255 RGB floats.
+    // preprocess_input is folded into the model graph.
+    return List.generate(1, (_) {
+      return List.generate(imgSize, (y) {
         return List.generate(imgSize, (x) {
           final p = resized.getPixel(x, y);
-          return [p.r.toDouble(), p.g.toDouble(), p.b.toDouble()];
+          return <double>[
+            p.r.toDouble(),
+            p.g.toDouble(),
+            p.b.toDouble(),
+          ];
         });
-      })
-    ];
+      });
+    });
   }
 
   static String _prettyLabel(String label, String cropName) {

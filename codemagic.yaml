@@ -10,13 +10,16 @@ workflows:
         script: flutter create --platforms=android --project-name my_farm .
       - name: Get Flutter packages
         script: flutter pub get
-      - name: Patch tflite_flutter to JVM 17
+      - name: Patch tflite_flutter (JVM 17 + compileSdk 36)
         script: |
           PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
           GF="$PLUGIN/android/build.gradle"
           echo "Patching: $GF"
+          # JVM 17
           perl -i -pe 's/JavaVersion\.VERSION_1_8/JavaVersion.VERSION_17/g' "$GF"
           perl -0777 -i -pe 's/(compileOptions\s*\{[^}]*\})/$1\n    kotlinOptions {\n        jvmTarget = "17"\n    }/s unless /kotlinOptions/' "$GF"
+          # Bump the plugin compileSdkVersion 31 -> 36 (deps require >=33)
+          perl -i -pe 's/compileSdkVersion\s+31/compileSdkVersion 36/g' "$GF"
           echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
       - name: Fix TensorFlow namespace conflict
         script: |
@@ -27,15 +30,11 @@ workflows:
             echo "android.nonTransitiveRClass=false"
           } >> "$GP"
           echo "=== gradle.properties ==="; cat "$GP"
-      - name: Disable R8 minification (fixes tflite GPU class R8 error)
+      - name: Disable R8 minification
         script: |
-          # The generated release block runs R8, which chokes on a tflite GPU class.
-          # Command-line --no-shrink can't override the gradle config, so we edit it
-          # directly: turn minification and resource shrinking off in the release block.
           BG="android/app/build.gradle.kts"
           perl -0777 -i -pe 's/(release\s*\{)/$1\n            isMinifyEnabled = false\n            isShrinkResources = false/s unless /isMinifyEnabled/' "$BG"
-          echo "=== build.gradle.kts release block ==="
-          grep -A6 "release {" "$BG"
+          echo "=== release block ==="; grep -A6 "release {" "$BG"
       - name: Build APK
         script: flutter build apk --release
     artifacts:

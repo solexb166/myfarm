@@ -7,26 +7,24 @@ workflows:
       java: 17
     scripts:
       - name: Regenerate Android platform files (fix v1 embedding)
-        script: |
-          # Regenerate the android/ platform folder with current v2 embedding,
-          # without touching lib/, assets/, or pubspec.yaml
-          flutter create --platforms=android --project-name my_farm .
+        script: flutter create --platforms=android --project-name my_farm .
       - name: Get Flutter packages
         script: flutter pub get
-      - name: Fix tflite_flutter JVM target
+      - name: Patch tflite_flutter to JVM 17
         script: |
-          # Ensure tflite_flutter compiles Kotlin at JVM 17 to match Java 17
-          PLUGIN_DIR=$(find /root/.pub-cache -type d -name "tflite_flutter-*" | head -1)
-          if [ -n "$PLUGIN_DIR" ]; then
-            GRADLE_FILE="$PLUGIN_DIR/android/build.gradle"
-            echo "Patching $GRADLE_FILE"
-            sed -i 's/VERSION_1_8/VERSION_17/g' "$GRADLE_FILE"
-            if ! grep -q "kotlinOptions" "$GRADLE_FILE"; then
-              sed -i '/targetCompatibility JavaVersion.VERSION_17/a\    }\n    kotlinOptions {\n        jvmTarget = "17"' "$GRADLE_FILE"
-            fi
-            echo "--- patched ---"
-            grep -A2 "compileOptions" "$GRADLE_FILE" || true
+          set -e
+          PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
+          GF="$PLUGIN/android/build.gradle"
+          echo "Patching: $GF"
+          echo "=== BEFORE ==="; cat "$GF"
+          # Bump Java 1.8 -> 17
+          sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g' "$GF"
+          # Add kotlinOptions jvmTarget "17" right after the targetCompatibility line
+          # (only if kotlinOptions not already present)
+          if ! grep -q "kotlinOptions" "$GF"; then
+            sed -i '/targetCompatibility JavaVersion.VERSION_17/a\        }\n        kotlinOptions {\n            jvmTarget = "17"' "$GF"
           fi
+          echo "=== AFTER ==="; cat "$GF"
       - name: Build APK
         script: flutter build apk --release
     artifacts:

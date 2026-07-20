@@ -27,7 +27,16 @@ workflows:
             echo "android.nonTransitiveRClass=false"
           } >> "$GP"
           echo "=== gradle.properties ==="; cat "$GP"
-      - name: Build APK (no shrink to avoid R8 tflite issue)
-        script: flutter build apk --release --no-shrink
+      - name: Disable R8 minification (fixes tflite GPU class R8 error)
+        script: |
+          # The generated release block runs R8, which chokes on a tflite GPU class.
+          # Command-line --no-shrink can't override the gradle config, so we edit it
+          # directly: turn minification and resource shrinking off in the release block.
+          BG="android/app/build.gradle.kts"
+          perl -0777 -i -pe 's/(release\s*\{)/$1\n            isMinifyEnabled = false\n            isShrinkResources = false/s unless /isMinifyEnabled/' "$BG"
+          echo "=== build.gradle.kts release block ==="
+          grep -A6 "release {" "$BG"
+      - name: Build APK
+        script: flutter build apk --release
     artifacts:
       - build/**/outputs/**/*.apk

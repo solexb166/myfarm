@@ -15,14 +15,21 @@ workflows:
           PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
           GF="$PLUGIN/android/build.gradle"
           echo "Patching: $GF"
-          # Bump Java 1.8 -> 17 (perl works identically on macOS and Linux)
           perl -i -pe 's/JavaVersion\.VERSION_1_8/JavaVersion.VERSION_17/g' "$GF"
-          # Insert kotlinOptions jvmTarget 17 after the compileOptions block (if absent)
           perl -0777 -i -pe 's/(compileOptions\s*\{[^}]*\})/$1\n    kotlinOptions {\n        jvmTarget = "17"\n    }/s unless /kotlinOptions/' "$GF"
-          echo "=== PATCHED FILE ==="
-          cat "$GF"
-          echo "=== verify ==="
-          grep -q "jvmTarget" "$GF" && echo "OK: jvmTarget present" || echo "WARN: jvmTarget missing"
+          echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
+      - name: Fix TensorFlow namespace conflict
+        script: |
+          # The tensorflow-lite, -gpu and -api artifacts all declare the same
+          # namespace (org.tensorflow.lite). Newer AGP rejects duplicate namespaces.
+          # These flags relax that check so the manifest merger succeeds.
+          GP="android/gradle.properties"
+          {
+            echo ""
+            echo "android.uniquePackageNames=false"
+            echo "android.nonTransitiveRClass=false"
+          } >> "$GP"
+          echo "=== gradle.properties ==="; cat "$GP"
       - name: Build APK
         script: flutter build apk --release
     artifacts:

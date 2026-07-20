@@ -20,9 +20,6 @@ workflows:
           echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
       - name: Fix TensorFlow namespace conflict
         script: |
-          # The tensorflow-lite, -gpu and -api artifacts all declare the same
-          # namespace (org.tensorflow.lite). Newer AGP rejects duplicate namespaces.
-          # These flags relax that check so the manifest merger succeeds.
           GP="android/gradle.properties"
           {
             echo ""
@@ -30,7 +27,7 @@ workflows:
             echo "android.nonTransitiveRClass=false"
           } >> "$GP"
           echo "=== gradle.properties ==="; cat "$GP"
-      - name: Build APK
-        script: flutter build apk --release
+      - name: Build APK (no shrink to avoid R8 tflite issue)
+        script: flutter build apk --release --no-shrink
     artifacts:
       - build/**/outputs/**/*.apk

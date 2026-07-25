@@ -22,7 +22,10 @@ workflows:
           perl -i -pe 's/compileSdkVersion\s+31/compileSdkVersion 36/g' "$GF"
           # Bump the bundled TensorFlow Lite runtime so it understands ops from
           # newer TF (our Colab-exported EfficientNet models). 2.11 is too old.
-          perl -i -pe 's/tflite_version = "2\.11\.0"/tflite_version = "2.14.0"/g' "$GF"
+          # Bump bundled TensorFlow Lite native runtime to match the TF version
+          # used to train/export the models in Colab (fixes "Unable to create
+          # interpreter" / "Didn't find op for builtin opcode" errors).
+          perl -i -pe 's/def tflite_version = "2\.11\.0"/def tflite_version = "2.16.1"/' "$GF"
           echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
       - name: Fix TensorFlow namespace conflict
         script: |

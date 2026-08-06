@@ -7,7 +7,14 @@ workflows:
       java: 17
     scripts:
       - name: Regenerate Android platform files (fix v1 embedding)
-        script: flutter create --platforms=android --org com.afrotym --project-name myfarm .
+        script: flutter create --platforms=android .
+      - name: Set application ID to com.afrotym.myfarm
+        script: |
+          BG="android/app/build.gradle.kts"
+          perl -i -pe 's/namespace = "com\.example\.my_farm"/namespace = "com.afrotym.myfarm"/' "$BG"
+          perl -i -pe 's/applicationId = "com\.example\.my_farm"/applicationId = "com.afrotym.myfarm"/' "$BG"
+          echo "=== namespace/applicationId lines ==="
+          grep -E "namespace|applicationId" "$BG"
       - name: Get Flutter packages
         script: flutter pub get
       - name: Generate app launcher icon (leaf logo)

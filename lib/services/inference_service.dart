@@ -54,8 +54,16 @@ class InferenceService {
     }
   }
 
+  /// Below this, we don't trust the model's answer enough to show it.
+  static const double _minConfidence = 0.55;
+
   /// Classify [image] for [cropKey], returning a full Diagnosis with treatment
   /// text pulled from the offline TreatmentDB in the chosen [lang].
+  ///
+  /// Throws [NotAPlantException] if the photo doesn't look like a leaf at all,
+  /// or [LowConfidenceException] if the model isn't confident enough to trust.
+  /// Both are caught by the UI and shown as a friendly "try again" message
+  /// instead of a wrong diagnosis.
   static Future<Diagnosis> classify({
     required File image,
     required String cropKey,
@@ -65,7 +73,22 @@ class InferenceService {
     final interpreter = _interpreters[cropKey]!;
     final labels = _labels[cropKey]!;
 
-    final input = await _preprocess(image);
+    final bytes = await image.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      throw Exception('Could not read image');
+    }
+    final resized = img.copyResize(decoded, width: imgSize, height: imgSize);
+
+    // Sanity check BEFORE running the model: does this even look like a
+    // natural leaf photo? Screenshots, documents, and plain walls are mostly
+    // white/gray/neutral with low colour saturation - real leaf photos
+    // (healthy green, or diseased yellow/brown/orange) are not.
+    if (!_looksLikePlant(resized)) {
+      throw NotAPlantException();
+    }
+
+    final input = _tensorFrom(resized);
     // Output buffer: [1, numClasses]
     final output =
         List.filled(labels.length, 0.0).reshape([1, labels.length]);
@@ -79,8 +102,13 @@ class InferenceService {
     for (int i = 1; i < scores.length; i++) {
       if (scores[i] > scores[best]) best = i;
     }
+    final topScore = scores[best];
+    if (topScore < _minConfidence) {
+      throw LowConfidenceException();
+    }
+
     final label = labels[best];
-    final confidence = (scores[best] * 100).round().clamp(0, 100);
+    final confidence = (topScore * 100).round().clamp(0, 100);
 
     final cropName = crops.firstWhere((c) => c['key'] == cropKey,
         orElse: () => {'name': cropKey})['name']!;
@@ -102,21 +130,37 @@ class InferenceService {
     );
   }
 
+  /// Rough, cheap check for "is this a natural plant photo at all". We look
+  /// at colour saturation and brightness across a sample of pixels. Screens,
+  /// documents and screenshots are dominated by near-white/near-gray/near-black
+  /// low-saturation pixels; leaf photos (any disease colour) are not.
+  static bool _looksLikePlant(img.Image resized) {
+    int naturalish = 0;
+    int sampled = 0;
+    for (int y = 0; y < resized.height; y += 4) {
+      for (int x = 0; x < resized.width; x += 4) {
+        final p = resized.getPixel(x, y);
+        final r = p.r.toDouble(), g = p.g.toDouble(), b = p.b.toDouble();
+        final maxC = math.max(r, math.max(g, b));
+        final minC = math.min(r, math.min(g, b));
+        final saturation = maxC <= 0 ? 0.0 : (maxC - minC) / maxC;
+        final tooBright = maxC > 245 && saturation < 0.12; // near-white
+        final tooDark = maxC < 30; // near-black (plain text)
+        if (saturation > 0.15 && !tooBright && !tooDark) {
+          naturalish++;
+        }
+        sampled++;
+      }
+    }
+    if (sampled == 0) return false;
+    return (naturalish / sampled) > 0.18;
+  }
+
   /// Resize, convert to RGB float tensor matching the training preprocessing.
   /// MobileNetV2/EfficientNet preprocessing is folded into the model graph
   /// (we added preprocess_input inside build_model), so here we only need to
   /// provide raw 0..255 RGB floats shaped [1, H, W, 3].
-  static Future<List<List<List<List<double>>>>> _preprocess(File file) async {
-    final bytes = await file.readAsBytes();
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) {
-      throw Exception('Could not read image');
-    }
-    final resized =
-        img.copyResize(decoded, width: imgSize, height: imgSize);
-
-    // Build a [1, H, W, 3] tensor of raw 0..255 RGB floats.
-    // preprocess_input is folded into the model graph.
+  static List<List<List<List<double>>>> _tensorFrom(img.Image resized) {
     return List.generate(1, (_) {
       return List.generate(imgSize, (y) {
         return List.generate(imgSize, (x) {
@@ -154,3 +198,11 @@ class InferenceService {
     _labels.clear();
   }
 }
+
+/// Thrown when the photo doesn't look like a natural leaf photo at all
+/// (e.g. a screenshot, document, or plain wall).
+class NotAPlantException implements Exception {}
+
+/// Thrown when the model ran but wasn't confident enough in any class to
+/// trust the result.
+class LowConfidenceException implements Exception {}

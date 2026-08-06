@@ -26,7 +26,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
   File? _image;
   bool _loading = false;
   bool _error = false;
-  String _errorDetail = '';
+  _ErrorKind _errorKind = _ErrorKind.generic;
   bool _speaking = false;
   Diagnosis? _result;
 
@@ -65,7 +65,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
     setState(() {
       _image = File(x.path);
       _error = false;
-      _errorDetail = '';
+      _errorKind = _ErrorKind.generic;
       _result = null;
     });
   }
@@ -75,7 +75,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
     setState(() {
       _loading = true;
       _error = false;
-      _errorDetail = '';
+      _errorKind = _ErrorKind.generic;
     });
     try {
       final d = await InferenceService.classify(
@@ -93,7 +93,13 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
       if (!mounted) return;
       setState(() {
         _error = true;
-        _errorDetail = e.toString();
+        if (e is NotAPlantException) {
+          _errorKind = _ErrorKind.notPlant;
+        } else if (e is LowConfidenceException) {
+          _errorKind = _ErrorKind.unsure;
+        } else {
+          _errorKind = _ErrorKind.generic;
+        }
         _loading = false;
       });
     }
@@ -291,6 +297,22 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
   }
 
   Widget _errorBanner() {
+    final String titleKey;
+    final String bodyKey;
+    switch (_errorKind) {
+      case _ErrorKind.notPlant:
+        titleKey = 'notPlantTitle';
+        bodyKey = 'notPlantBody';
+        break;
+      case _ErrorKind.unsure:
+        titleKey = 'unsureTitle';
+        bodyKey = 'unsureBody';
+        break;
+      case _ErrorKind.generic:
+        titleKey = 'errTitle';
+        bodyKey = 'errBody';
+        break;
+    }
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -303,16 +325,12 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
         const SizedBox(width: 11),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t.get('errTitle'),
+            Text(t.get(titleKey),
                 style: AppText.body(14.5,
                     weight: FontWeight.w700, color: AppColors.cream)),
             const SizedBox(height: 2),
-            Text(t.get('errBody'),
+            Text(t.get(bodyKey),
                 style: AppText.body(13, color: AppColors.creamDim)),
-            if (_errorDetail.isNotEmpty) const SizedBox(height: 6),
-            if (_errorDetail.isNotEmpty)
-              Text(_errorDetail,
-                  style: AppText.body(11, color: AppColors.creamDim)),
           ]),
         ),
       ]),
@@ -564,3 +582,5 @@ class _SmallBtn extends StatelessWidget {
     );
   }
 }
+
+enum _ErrorKind { generic, notPlant, unsure }

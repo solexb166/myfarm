@@ -7,9 +7,11 @@ workflows:
       java: 17
     scripts:
       - name: Regenerate Android platform files (fix v1 embedding)
-        script: flutter create --platforms=android --project-name my_farm .
+        script: flutter create --platforms=android --org com.afrotym --project-name myfarm .
       - name: Get Flutter packages
         script: flutter pub get
+      - name: Generate app launcher icon (leaf logo)
+        script: flutter pub run flutter_launcher_icons
       - name: Patch tflite_flutter (JVM 17 + compileSdk 36)
         script: |
           PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
@@ -41,7 +43,36 @@ workflows:
           BG="android/app/build.gradle.kts"
           perl -0777 -i -pe 's/(release\s*\{)/$1\n            isMinifyEnabled = false\n            isShrinkResources = false/s unless /isMinifyEnabled/' "$BG"
           echo "=== release block ==="; grep -A6 "release {" "$BG"
-      - name: Build APK
+      - name: Set up release signing key
+        script: |
+          # Decode the keystore from a Codemagic secure environment variable
+          # (set CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
+          # in Codemagic > App settings > Environment variables > group "release")
+          if [ -n "$CM_KEYSTORE" ]; then
+            echo "$CM_KEYSTORE" | base64 --decode > android/app/release.keystore
+            cat > android/key.properties <<PROPS
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=release.keystore
+          PROPS
+            echo "Release keystore configured."
+          else
+            echo "No CM_KEYSTORE set - building with debug signing (Play Store will reject this)."
+          fi
+      - name: Wire signing config into build.gradle.kts
+        script: |
+          BG="android/app/build.gradle.kts"
+          if [ -f android/key.properties ] && ! grep -q "keystoreProperties" "$BG"; then
+            perl -0777 -i -pe 's/(plugins \{)/import java.util.Properties\nimport java.io.FileInputStream\n\nval keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\n\n$1/s' "$BG"
+            perl -0777 -i -pe 's/(buildTypes \{)/signingConfigs {\n        create("release") {\n            keyAlias = keystoreProperties["keyAlias"] as String?\n            keyPassword = keystoreProperties["keyPassword"] as String?\n            storeFile = keystoreProperties["storeFile"]?.let { file(it) }\n            storePassword = keystoreProperties["storePassword"] as String?\n        }\n    }\n    $1/s' "$BG"
+            perl -i -pe 's/signingConfig = signingConfigs.getByName\("debug"\)/signingConfig = signingConfigs.getByName("release")/' "$BG"
+            echo "=== signing wired in ==="; cat "$BG"
+          fi
+      - name: Build Android App Bundle (for Play Store)
+        script: flutter build appbundle --release
+      - name: Build APK (for direct sharing)
         script: flutter build apk --release
     artifacts:
+      - build/**/outputs/**/*.aab
       - build/**/outputs/**/*.apk

@@ -15,6 +15,23 @@ workflows:
           perl -i -pe 's/applicationId = "com\.example\.my_farm"/applicationId = "com.afrotym.myfarm"/' "$BG"
           echo "=== namespace/applicationId lines ==="
           grep -E "namespace|applicationId" "$BG"
+          # MainActivity.kt must live at a path matching the new package,
+          # and its `package` declaration must match too - otherwise Android
+          # can't find the launcher activity and the app crashes instantly
+          # on open (before Flutter even starts, so no error screen shows).
+          OLD_DIR="android/app/src/main/kotlin/com/example/my_farm"
+          NEW_DIR="android/app/src/main/kotlin/com/afrotym/myfarm"
+          if [ -f "$OLD_DIR/MainActivity.kt" ]; then
+            mkdir -p "$NEW_DIR"
+            mv "$OLD_DIR/MainActivity.kt" "$NEW_DIR/MainActivity.kt"
+            perl -i -pe 's/package com\.example\.my_farm/package com.afrotym.myfarm/' "$NEW_DIR/MainActivity.kt"
+            rm -rf "android/app/src/main/kotlin/com/example"
+            echo "=== MainActivity.kt moved and repackaged ==="
+            cat "$NEW_DIR/MainActivity.kt"
+          else
+            echo "WARNING: MainActivity.kt not found at expected old path: $OLD_DIR"
+            find android/app/src/main/kotlin -name "MainActivity.kt"
+          fi
       - name: Get Flutter packages
         script: flutter pub get
       - name: Generate app launcher icon (leaf logo)

@@ -15,30 +15,26 @@ Everything is saved on the phone first, and `lib/services/backend.dart` syncs
 in the background (on start-up and after every scan or plan change). If the
 phone is offline, it tries again next time.
 
-Each phone signs in **anonymously** the first time it is online. Row Level
-Security means a phone can only read and write its own scans, plan and
-photos. Treatments are read-only to the app.
+Row Level Security means each farmer can only read and write their own
+scans, plan, profile and photos. Treatments are read-only to the app.
 
 ## Accounts (email sign-in)
 
-Farmers can sign in from the account button on the home screen. They enter
-their email and type the 6-digit code they receive; there is no password.
-Signing in is optional, and diagnosis never needs it.
+The app opens on a sign-in screen. Farmers enter their email and type the
+6-digit code they receive; there is no password.
 
-- **Keeping what the phone already backed up:** before the code is sent, the
-  phone asks for a one-time *merge ticket* (`start_account_merge`). After
-  sign-in it hands the ticket back (`finish_account_merge`), and the server
-  moves the anonymous scans and plan onto the email account. This works
-  whether the email is new or the farmer already has an account (e.g. a new
-  phone). If the account already has a plan, it keeps it.
-- **Photos uploaded before sign-in** stay in the anonymous user's folder in
-  `scan-photos`. Their `photo_path` on the moved scans still points there,
-  and you can see them in the dashboard.
+- **Internet is needed once**, to sign in. The session is then kept on the
+  phone, so the app opens straight to the home screen and diagnosis and the
+  calendar work offline, even after the access token expires. The farmer is
+  only signed out if they choose to, or if the server rejects the session
+  (e.g. the account was deleted).
 - **Signing out** removes the farmer's scans and plan from the phone. They
   stay in the account. The app warns first if any scans haven't uploaded.
-- **Making sign-in required for backup:** if you turn off anonymous
-  sign-ins, nothing uploads until the farmer signs in. Scans wait on the
-  phone and upload after sign-in.
+- **Shared phones:** if a different farmer signs in, anything the previous
+  farmer left on the phone is cleared first, so it can't upload to the
+  wrong account.
+- **Builds without Supabase settings** have no accounts and open straight to
+  the home screen, so diagnosis is never blocked by a missing backend.
 
 ## Schema
 
@@ -46,8 +42,7 @@ Signing in is optional, and diagnosis never needs it.
 |---|---|
 | `scans` | One row per diagnosis. `(user_id, taken_at)` is unique, so retried uploads don't duplicate |
 | `crop_plans` | One row per user: the active plan, with tasks as JSON |
-| `profiles` | One row per signed-in farmer: display name |
-| `start_account_merge()` / `finish_account_merge(ticket)` | Move a phone's anonymous data to the account it signs in to |
+| `profiles` | One row per farmer: display name |
 | `treatments` | `(label, lang)` → cause / organic / chemical / prevent. Seeded from `treatment_db.dart` |
 | `disease_counts` | View: scans per disease per week, for analysis in the dashboard |
 | `scan-photos` | Private storage bucket. Each user's photos are in a `<user id>/` folder |
@@ -57,8 +52,8 @@ Signing in is optional, and diagnosis never needs it.
 1. **Create a project** at <https://supabase.com/dashboard> (the free tier is
    enough to start).
 2. **Auth settings** (Authentication → Sign In / Providers):
-   - Turn on *Allow anonymous sign-ins*.
    - Keep the **Email** provider on.
+   - Leave *Allow anonymous sign-ins* **off**. The app doesn't use them.
    - Turning on CAPTCHA protection is a good idea before a public release.
 3. **Email code templates** (Authentication → Emails → Templates): edit both
    **Confirm signup** (sent to new emails) and **Magic Link** (sent to
@@ -124,6 +119,12 @@ select * from disease_counts order by week desc, scans desc;
 
 ## Privacy
 
-Uploaded photos and scans are linked to an anonymous user ID, with no name or
-phone number. Before a public release, mention in the app's privacy notice
-that photos are uploaded to improve the service.
+Scans, photos and the season plan are linked to the farmer's email account,
+and optionally a name they enter. Before a public release on Google Play you
+will need:
+
+- a privacy policy that says what is collected (email, name, crop photos,
+  diagnoses) and why, and
+- a way for farmers to delete their account and data, both in the app and
+  from a web page. Google Play requires this for apps that let people
+  create accounts.

@@ -347,3 +347,41 @@ class Notice extends StatelessWidget {
     );
   }
 }
+
+/// Rounded leaf-green square holding an icon.
+class IconTile extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  const IconTile({super.key, required this.icon, this.size = 56});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.leaf,
+          borderRadius: BorderRadius.circular(size * 0.29),
+        ),
+        child: Icon(icon, size: size * 0.48, color: AppColors.soil),
+      );
+}
+
+/// Small icon + text button, e.g. "Send a new code".
+class TextLink extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  const TextLink(
+      {super.key, required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = onTap == null ? AppColors.creamDim : AppColors.gold;
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 17, color: color),
+      label: Text(label,
+          style: AppText.body(14, weight: FontWeight.w600, color: color)),
+    );
+  }
+}

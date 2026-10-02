@@ -26,8 +26,9 @@ date. Calendar and scan history are stored on the device.
 
 When built with Supabase settings, the app also backs up scans (with photos)
 and the crop plan, and downloads updated treatment text whenever it is online.
-Farmers can sign in with their email (a 6-digit code, no password) to keep
-their records across phones. Signing in is optional.
+Farmers sign in once with their email (a 6-digit code, no password), which
+needs internet. After that the app works offline, and their records follow
+them to a new phone.
 It still works fully offline without them. Setup, schema and how to edit
 treatments are described in [`supabase/README.md`](supabase/README.md).
 
@@ -96,7 +97,9 @@ lib/
     diagnose_screen.dart          crop pick → photo → on-device result
     calendar_screen.dart          setup → season timeline
     history_screen.dart           saved past diagnoses
-    account_screen.dart           optional email sign-in + backup status
+    app_gate.dart                 sign in first, then home; saves language
+    sign_in_screen.dart           email code sign-in
+    account_screen.dart           name, backup status, sign out
   widgets/common.dart
 assets/models/                    put trained .tflite + labels here
 supabase/migrations/              backend database schema + treatment seed

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_farm/models/models.dart';
-import 'package:my_farm/screens/account_screen.dart';
+import 'package:my_farm/screens/app_gate.dart';
+import 'package:my_farm/screens/home_screen.dart';
+import 'package:my_farm/screens/sign_in_screen.dart';
 import 'package:my_farm/services/backend.dart';
 import 'package:my_farm/services/storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,14 +68,14 @@ void main() {
     await Storage.addToHistory(_scan(1));
     await Storage.savePlan(CropPlan(
         crop: 'Maize', summary: '', plantedDate: '2026-09-01', tasks: []));
-    await Storage.setMergeTicket('ticket');
+    await Storage.setDataOwner('user-1');
     await Storage.setDisplayName('Nakato');
 
     await Storage.clearAccountData();
 
     expect(await Storage.getHistory(), isEmpty);
     expect(await Storage.getPlan(), isNull);
-    expect(await Storage.getMergeTicket(), isNull);
+    expect(await Storage.getDataOwner(), isNull);
     expect(await Storage.getDisplayName(), isNull);
     expect(await Storage.getPlanRev(), await Storage.getPlanSyncedRev());
     expect(await Storage.getLang(), 'lg');
@@ -83,15 +85,27 @@ void main() {
   testWidgets('sign-in screen rejects an invalid email without a network call',
       (tester) async {
     GoogleFonts.config.allowRuntimeFetching = false;
-    await tester.pumpWidget(const MaterialApp(home: AccountScreen(lang: 'en')));
+    await tester.pumpWidget(
+        MaterialApp(home: SignInScreen(lang: 'en', onLang: (_) {})));
     await tester.pump();
 
-    expect(find.text('Back up your farm records'), findsOneWidget);
+    expect(find.text('Sign in to get started'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'nakato@gmail');
     await tester.tap(find.text('Send sign-in code'));
     await tester.pump();
 
     expect(find.text('Enter a valid email address.'), findsOneWidget);
     expect(find.text('Code from the email'), findsNothing);
+  });
+
+  testWidgets('a build without Supabase settings opens straight to home',
+      (tester) async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    await tester
+        .pumpWidget(const MaterialApp(home: AppGate(initialLang: 'en')));
+    await tester.pump();
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(SignInScreen), findsNothing);
   });
 }

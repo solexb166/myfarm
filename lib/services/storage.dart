@@ -12,8 +12,8 @@ class Storage {
   static const _kHistory = 'scan_history';
   static const _kLang = 'lang';
   static const _kTreatments = 'treatment_overrides';
-  static const _kMergeTicket = 'account_merge_ticket';
   static const _kDisplayName = 'display_name';
+  static const _kOwner = 'data_owner';
 
   // ---- language preference ----
   static Future<String> getLang() async {
@@ -137,21 +137,15 @@ class Storage {
   }
 
   // ---- account ----
-  /// Ticket that moves this phone's anonymous data to the account being
-  /// signed in to. Kept on disk because the phone may close the app while
-  /// the farmer checks their email.
-  static Future<String?> getMergeTicket() async {
+  /// Account id the scans and plan on this phone belong to.
+  static Future<String?> getDataOwner() async {
     final p = await SharedPreferences.getInstance();
-    return p.getString(_kMergeTicket);
+    return p.getString(_kOwner);
   }
 
-  static Future<void> setMergeTicket(String? ticket) async {
+  static Future<void> setDataOwner(String id) async {
     final p = await SharedPreferences.getInstance();
-    if (ticket == null) {
-      await p.remove(_kMergeTicket);
-    } else {
-      await p.setString(_kMergeTicket, ticket);
-    }
+    await p.setString(_kOwner, id);
   }
 
   static Future<String?> getDisplayName() async {
@@ -177,8 +171,8 @@ class Storage {
       _kPlan,
       _kPlanRev,
       _kPlanSyncedRev,
-      _kMergeTicket,
       _kDisplayName,
+      _kOwner,
     ]) {
       await p.remove(k);
     }

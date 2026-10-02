@@ -5,9 +5,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'storage.dart';
 import 'treatment_db.dart';
 
-/// Optional cloud backend (Supabase). The app stays fully offline-first:
-/// everything is saved on the phone first, and [sync] pushes scans + the crop
-/// plan up and pulls updated treatment text down whenever there's a network.
+/// Cloud backend (Supabase). The app stays offline-first: everything is
+/// saved on the phone first, and [sync] pushes the signed-in farmer's scans +
+/// crop plan up and pulls updated treatment text down whenever there's a
+/// network. Farmers sign in once (needs internet); the session is kept on the
+/// phone, so the app keeps working offline afterwards.
 ///
 /// Configure at build time (see supabase/README.md):
 ///   flutter run --dart-define=SUPABASE_URL=https://<ref>.supabase.co \
@@ -53,8 +55,7 @@ class Backend {
     do {
       _again = false;
       await _step('treatments', _pullTreatments);
-      if (!await _signIn()) break;
-      if (account != null) await _step('account merge', _finishMerge);
+      if (account == null) break;
       await _step('scans', _pushScans);
       await _step('plan', _pushPlan);
     } while (_again);
@@ -68,25 +69,13 @@ class Backend {
     }
   }
 
-  /// Each phone gets an anonymous account the first time it's online, so it
-  /// can back up scans before (or without) the farmer signing in.
-  static Future<bool> _signIn() async {
-    if (_db.auth.currentUser != null) return true;
-    try {
-      await _db.auth.signInAnonymously().timeout(_timeout);
-      return true;
-    } catch (e) {
-      debugPrint('Sign-in failed: $e');
-      return false;
-    }
-  }
-
   // ---------------------------------------------------------------------------
   // Email accounts
   // ---------------------------------------------------------------------------
 
-  /// The farmer's email account, or null while the phone only has its
-  /// anonymous account (or the backend is off).
+  /// The signed-in farmer, or null (also when the backend is off). Stays set
+  /// while offline, even after the access token expires; it is only cleared
+  /// by signing out or if the server rejects the session.
   static User? get account {
     if (!_enabled) return null;
     final u = _db.auth.currentUser;
@@ -109,17 +98,6 @@ class Backend {
   /// this email is new.
   static Future<void> sendEmailCode(String email) async {
     try {
-      // Whichever account this phone signs in to takes over the scans it
-      // backed up anonymously. See supabase/migrations/*_accounts.sql.
-      final u = _db.auth.currentUser;
-      if (u != null && u.isAnonymous) {
-        try {
-          final ticket = await _db.rpc('start_account_merge').timeout(_timeout);
-          await Storage.setMergeTicket(ticket as String);
-        } on PostgrestException catch (e) {
-          debugPrint('Could not start account merge: $e');
-        }
-      }
       await _db.auth.signInWithOtp(email: email).timeout(_timeout);
     } catch (e) {
       throw AccountError.from(e);
@@ -128,30 +106,27 @@ class Backend {
 
   /// Step 2 of signing in: check the code from the email.
   static Future<void> verifyEmailCode(String email, String code) async {
+    final AuthResponse res;
     try {
-      await _db.auth
+      res = await _db.auth
           .verifyOTP(type: OtpType.email, email: email, token: code)
           .timeout(_timeout);
     } catch (e) {
       throw AccountError.from(e);
     }
-    // The plan on this phone is the one the farmer is looking at, so the
-    // account should have it too.
+    // Records left on the phone by a different farmer (e.g. their session
+    // was ended by the server) must not show up in, or upload to, this
+    // account.
+    final owner = await Storage.getDataOwner();
+    if (owner != null && owner != res.user?.id) {
+      await Storage.clearAccountData();
+    }
+    if (res.user != null) await Storage.setDataOwner(res.user!.id);
+    // A phone updated from a version without accounts may already hold a
+    // plan; make sure it reaches the account. (Old scans are unsynced, so
+    // they upload anyway.)
     if (await Storage.getPlan() != null) await Storage.markPlanUnsynced();
     unawaited(sync());
-  }
-
-  /// Move the anonymous data to the signed-in account. A ticket is kept
-  /// until the server has answered, so a dropped connection retries later.
-  static Future<void> _finishMerge() async {
-    final ticket = await Storage.getMergeTicket();
-    if (ticket == null) return;
-    try {
-      await _db.rpc('finish_account_merge', params: {'merge_ticket': ticket});
-    } on PostgrestException catch (e) {
-      debugPrint('Account merge rejected: $e');
-    }
-    await Storage.setMergeTicket(null);
   }
 
   /// Sign out and remove the farmer's records from this phone. The caller

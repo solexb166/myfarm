@@ -1,14 +1,13 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/backend.dart';
 import '../services/l10n.dart';
 import '../services/storage.dart';
 import '../widgets/common.dart';
+import 'sign_in_screen.dart' show accountErrorKey;
 
-/// Email sign-in (code by email, no password) and the signed-in account
-/// view: name, backup status and sign-out. Signing in is optional; the rest
-/// of the app works the same without it.
+/// The signed-in farmer's account: name, backup status and sign-out.
+/// (Signing in happens on [SignInScreen], before the app opens.)
 class AccountScreen extends StatefulWidget {
   final String lang;
   const AccountScreen({super.key, required this.lang});
@@ -18,22 +17,11 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
-  static const _resendSeconds = 60;
-
   late final L10n t = L10n(widget.lang);
-  final _emailCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
-  StreamSubscription<void>? _accountSub;
-  Timer? _resendTimer;
 
-  // Signing in
-  String? _sentTo; // email the code was sent to; null while entering email
-  int _resendIn = 0;
   bool _busy = false;
   String? _error;
-
-  // Signed in
   String _savedName = '';
   bool _nameSaved = false;
   int _pending = 0;
@@ -42,25 +30,16 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   void initState() {
     super.initState();
-    _accountSub = Backend.accountChanges.listen((_) => _refresh());
     _refresh();
   }
 
   @override
   void dispose() {
-    _accountSub?.cancel();
-    _resendTimer?.cancel();
-    _emailCtrl.dispose();
-    _codeCtrl.dispose();
     _nameCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _refresh() async {
-    if (Backend.account == null) {
-      if (mounted) setState(() {});
-      return;
-    }
     _pending = await Storage.pendingScanCount();
     if (mounted) setState(() {});
     final name = await Backend.loadDisplayName() ?? '';
@@ -71,13 +50,6 @@ class _AccountScreenState extends State<AccountScreen> {
     });
   }
 
-  String _message(AccountError e) => t.get(switch (e) {
-        AccountError.offline => 'errOffline',
-        AccountError.wrongCode => 'errCode',
-        AccountError.tooManyTries => 'errTooMany',
-        AccountError.failed => 'errGeneric',
-      });
-
   /// Run an account action with a spinner, showing any error inline.
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
@@ -87,60 +59,10 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       await action();
     } on AccountError catch (e) {
-      if (mounted) setState(() => _error = _message(e));
+      if (mounted) setState(() => _error = t.get(accountErrorKey(e)));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  Future<void> _sendCode() async {
-    final email = _emailCtrl.text.trim();
-    if (!Backend.looksLikeEmail(email)) {
-      setState(() => _error = t.get('errEmail'));
-      return;
-    }
-    await _run(() async {
-      await Backend.sendEmailCode(email);
-      if (!mounted) return;
-      setState(() {
-        _sentTo = email;
-        _codeCtrl.clear();
-      });
-      _startResendTimer();
-    });
-  }
-
-  void _startResendTimer() {
-    _resendTimer?.cancel();
-    setState(() => _resendIn = _resendSeconds);
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return timer.cancel();
-      setState(() => _resendIn--);
-      if (_resendIn <= 0) timer.cancel();
-    });
-  }
-
-  Future<void> _verify() async {
-    final code = _codeCtrl.text.replaceAll(RegExp(r'\D'), '');
-    if (code.length < 6) {
-      setState(() => _error = t.get('errCode'));
-      return;
-    }
-    await _run(() async {
-      await Backend.verifyEmailCode(_sentTo!, code);
-      _resendTimer?.cancel();
-      _sentTo = null;
-      await _refresh();
-    });
-  }
-
-  void _changeEmail() {
-    _resendTimer?.cancel();
-    setState(() {
-      _sentTo = null;
-      _error = null;
-      _resendIn = 0;
-    });
   }
 
   Future<void> _saveName() async {
@@ -201,14 +123,8 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     if (confirmed != true) return;
     await Backend.signOut();
-    if (!mounted) return;
-    setState(() {
-      _savedName = '';
-      _nameCtrl.clear();
-      _emailCtrl.clear();
-      _pending = 0;
-      _error = null;
-    });
+    // AppGate now shows the sign-in screen underneath; close everything above it.
+    if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
   @override
@@ -221,87 +137,10 @@ class _AccountScreenState extends State<AccountScreen> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
-              child: account == null
-                  ? _buildSignIn()
-                  : _buildAccount(account.email ?? ''),
+              child: _buildAccount(account?.email ?? ''),
             ),
           ),
         ]),
-      ),
-    );
-  }
-
-  // ---------- SIGN IN ----------
-  Widget _buildSignIn() {
-    final sent = _sentTo != null;
-    return AutofillGroup(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _IconTile(icon: Icons.cloud_sync_outlined),
-          const SizedBox(height: 18),
-          Text(t.get('accountTitle'), style: AppText.display(26)),
-          const SizedBox(height: 8),
-          Text(t.get('accountSub'),
-              style: AppText.body(15, color: AppColors.creamDim)),
-          const SizedBox(height: 26),
-          if (!sent) ...[
-            FieldLabel(t.get('email')),
-            AppTextField(
-              controller: _emailCtrl,
-              hint: t.get('emailPh'),
-              icon: Icons.mail_outline,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              onSubmitted: (_) => _sendCode(),
-            ),
-          ] else ...[
-            Notice(
-              icon: Icons.mark_email_read_outlined,
-              color: AppColors.leaf,
-              text: t.get('codeSent').replaceAll('{email}', _sentTo!),
-            ),
-            const SizedBox(height: 18),
-            FieldLabel(t.get('code')),
-            AppTextField(
-              controller: _codeCtrl,
-              hint: t.get('codePh'),
-              icon: Icons.pin_outlined,
-              keyboardType: TextInputType.number,
-              autofillHints: const [AutofillHints.oneTimeCode],
-              autofocus: true,
-              onSubmitted: (_) => _verify(),
-            ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: 14),
-            Notice(icon: Icons.error_outline, text: _error!),
-          ],
-          const SizedBox(height: 20),
-          BigButton(
-            label: sent ? t.get('verify') : t.get('sendCode'),
-            icon: sent ? Icons.login : Icons.send_outlined,
-            loading: _busy,
-            onTap: sent ? _verify : _sendCode,
-          ),
-          if (sent) ...[
-            const SizedBox(height: 10),
-            Wrap(spacing: 8, children: [
-              _TextLink(
-                icon: Icons.refresh,
-                label: _resendIn > 0
-                    ? t.get('resendIn').replaceAll('{s}', '$_resendIn')
-                    : t.get('resend'),
-                onTap: _resendIn > 0 || _busy ? null : _sendCode,
-              ),
-              _TextLink(
-                icon: Icons.edit_outlined,
-                label: t.get('changeEmail'),
-                onTap: _busy ? null : _changeEmail,
-              ),
-            ]),
-          ],
-        ],
       ),
     );
   }
@@ -314,7 +153,7 @@ class _AccountScreenState extends State<AccountScreen> {
       children: [
         _Card(
           child: Row(children: [
-            const _IconTile(icon: Icons.person_outline, size: 48),
+            const IconTile(icon: Icons.person_outline, size: 48),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -418,23 +257,6 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 }
 
-class _IconTile extends StatelessWidget {
-  final IconData icon;
-  final double size;
-  const _IconTile({required this.icon, this.size = 56});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.leaf,
-          borderRadius: BorderRadius.circular(size * 0.29),
-        ),
-        child: Icon(icon, size: size * 0.48, color: AppColors.soil),
-      );
-}
-
 class _Card extends StatelessWidget {
   final Widget child;
   const _Card({required this.child});
@@ -450,24 +272,6 @@ class _Card extends StatelessWidget {
         ),
         child: child,
       );
-}
-
-class _TextLink extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  const _TextLink({required this.icon, required this.label, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = onTap == null ? AppColors.creamDim : AppColors.gold;
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 17, color: color),
-      label: Text(label,
-          style: AppText.body(14, weight: FontWeight.w600, color: color)),
-    );
-  }
 }
 
 class _OutlineButton extends StatelessWidget {

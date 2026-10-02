@@ -9,22 +9,18 @@ import 'calendar_screen.dart';
 import 'history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String lang;
+  final ValueChanged<String> onLang;
+  const HomeScreen({super.key, required this.lang, required this.onLang});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String lang = 'en';
-  late L10n t = L10n(lang);
-
-  void _setLang(String l) => setState(() {
-        lang = l;
-        t = L10n(l);
-      });
-
   @override
   Widget build(BuildContext context) {
+    final lang = widget.lang;
+    final t = L10n(lang);
     return Scaffold(
       body: Stack(children: [
         SingleChildScrollView(
@@ -164,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 8),
             ],
-            LangToggle(lang: lang, onChange: _setLang),
+            LangToggle(lang: lang, onChange: widget.onLang),
           ]),
         ),
       ]),

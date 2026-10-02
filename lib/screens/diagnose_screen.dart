@@ -153,7 +153,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
     return Scaffold(
       body: SafeArea(
         child: Column(children: [
-          TopBar(title: t.get('chooseCrop'), onBack: () => Navigator.pop(context)),
+          TopBar(title: t.get('chooseCrop')),
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 4, 22, 12),
             child: Align(
@@ -364,7 +364,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [AppColors.soil, Colors.transparent],
+                    colors: [AppColors.bg, Color(0x00F5F6F1)],
                     stops: [0.04, 0.6],
                   ),
                 ),
@@ -391,14 +391,12 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
                               ? Icons.check_circle
                               : Icons.warning_amber_rounded,
                           size: 15,
-                          color: d.healthy ? AppColors.soil : AppColors.cream),
+                          color: AppColors.onPrimary),
                       const SizedBox(width: 7),
                       Text(d.crop.isEmpty ? 'Crop' : d.crop,
                           style: AppText.body(13,
                               weight: FontWeight.w700,
-                              color: d.healthy
-                                  ? AppColors.soil
-                                  : AppColors.cream)),
+                              color: AppColors.onPrimary)),
                     ]),
                   ),
                   const SizedBox(height: 14),

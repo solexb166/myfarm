@@ -83,7 +83,7 @@ disabled — so the app ships fine with only cassava trained.
 ```
 lib/
   main.dart
-  theme/app_theme.dart            colour system + fonts
+  theme/app_theme.dart            light colour system (contrast-checked) + fonts
   models/models.dart              Diagnosis, CropPlan, CropTask
   services/
     inference_service.dart        on-device TFLite classification
@@ -98,6 +98,7 @@ lib/
     calendar_screen.dart          setup → season timeline
     history_screen.dart           saved past diagnoses
     app_gate.dart                 sign in first, then home; saves language
+    main_shell.dart               bottom tabs: Home, Calendar, Scans, Account
     sign_in_screen.dart           email code sign-in
     account_screen.dart           name, backup status, sign out
   widgets/common.dart

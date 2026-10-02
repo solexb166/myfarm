@@ -134,7 +134,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildSetup() {
     final ready = _cropCtrl.text.trim().isNotEmpty && _planted != null;
     return Column(children: [
-      TopBar(title: t.get('setup'), onBack: () => Navigator.pop(context)),
+      TopBar(title: t.get('setup')),
       Expanded(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
@@ -207,7 +207,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final nextIndex = p.tasks.indexWhere((tk) => !tk.done);
 
     return Column(children: [
-      TopBar(title: t.get('season'), onBack: () => Navigator.pop(context)),
+      TopBar(title: t.get('season')),
       Expanded(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(22, 8, 22, 30),

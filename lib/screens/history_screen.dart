@@ -39,7 +39,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       body: SafeArea(
         child: Column(children: [
-          TopBar(title: t.get('history'), onBack: () => Navigator.pop(context)),
+          TopBar(title: t.get('history')),
           Expanded(
             child: !_loaded
                 ? const Center(
@@ -196,6 +196,9 @@ class DiagnosisDetailScreen extends StatelessWidget {
             child: TopBar(
                 title: t.get('diagnose'), onBack: () => Navigator.pop(context)),
           ),
+          if (!hasImg)
+            const SizedBox(height: 28)
+          else
           Stack(children: [
             SizedBox(
               height: 200,
@@ -210,7 +213,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [AppColors.soil, Colors.transparent],
+                    colors: [AppColors.bg, Color(0x00F5F6F1)],
                     stops: [0.04, 0.6],
                   ),
                 ),
@@ -234,9 +237,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                     child: Text(d.crop.isEmpty ? 'Crop' : d.crop,
                         style: AppText.body(13,
                             weight: FontWeight.w700,
-                            color: d.healthy
-                                ? AppColors.soil
-                                : AppColors.cream)),
+                            color: AppColors.onPrimary)),
                   ),
                   const SizedBox(height: 14),
                   Text(d.diagnosis, style: AppText.display(28, spacing: -1)),

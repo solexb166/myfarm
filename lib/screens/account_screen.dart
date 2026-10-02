@@ -133,7 +133,7 @@ class _AccountScreenState extends State<AccountScreen> {
     return Scaffold(
       body: SafeArea(
         child: Column(children: [
-          TopBar(title: t.get('account'), onBack: () => Navigator.pop(context)),
+          TopBar(title: t.get('account')),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),

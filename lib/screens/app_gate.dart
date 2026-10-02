@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/backend.dart';
 import '../services/storage.dart';
-import 'home_screen.dart';
+import 'main_shell.dart';
 import 'sign_in_screen.dart';
 
 /// Root of the app. Farmers sign in once before using MY FARM; after that
@@ -47,6 +47,6 @@ class _AppGateState extends State<AppGate> {
     if (Backend.enabled && Backend.account == null) {
       return SignInScreen(lang: _lang, onLang: _setLang);
     }
-    return HomeScreen(lang: _lang, onLang: _setLang);
+    return MainShell(lang: _lang, onLang: _setLang);
   }
 }

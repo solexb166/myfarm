@@ -12,7 +12,8 @@ class LangToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(999),
       ),
       padding: const EdgeInsets.all(3),
@@ -27,14 +28,15 @@ class LangToggle extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: lang == l ? AppColors.gold : Colors.transparent,
+                  color: lang == l ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   l == 'en' ? 'EN' : 'LUG',
                   style: AppText.body(12,
                       weight: FontWeight.w700,
-                      color: lang == l ? AppColors.soil : AppColors.creamDim),
+                      color:
+                          lang == l ? AppColors.onPrimary : AppColors.textDim),
                 ),
               ),
             ),
@@ -149,37 +151,53 @@ class InfoBlock extends StatelessWidget {
   }
 }
 
-/// Sticky back-bar with title.
+/// Screen title with a back button. Without [onBack] the button pops the
+/// route, and it is hidden when there is nothing to go back to (e.g. the
+/// screen is a tab).
 class TopBar extends StatelessWidget {
   final String title;
-  final VoidCallback onBack;
-  const TopBar({super.key, required this.title, required this.onBack});
+  final VoidCallback? onBack;
+  final Widget? trailing;
+  const TopBar({super.key, required this.title, this.onBack, this.trailing});
 
   @override
   Widget build(BuildContext context) {
+    final back = onBack ??
+        (Navigator.of(context).canPop()
+            ? () => Navigator.of(context).maybePop()
+            : null);
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
       child: Row(children: [
-        GestureDetector(
-          onTap: onBack,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.card,
+        if (back != null) ...[
+          Material(
+            color: AppColors.surface,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.line),
+              side: const BorderSide(color: AppColors.border),
             ),
-            child:
-                const Icon(Icons.arrow_back, size: 20, color: AppColors.cream),
+            child: InkWell(
+              onTap: back,
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 42,
+                height: 42,
+                child: Icon(Icons.arrow_back,
+                    size: 20,
+                    color: AppColors.text,
+                    semanticLabel:
+                        MaterialLocalizations.of(context).backButtonTooltip),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 14),
+          const SizedBox(width: 14),
+        ],
         Expanded(
           child: Text(title,
-              style: AppText.display(21, weight: FontWeight.w800),
+              style: AppText.display(22, weight: FontWeight.w800),
               overflow: TextOverflow.ellipsis),
         ),
+        if (trailing != null) trailing!,
       ]),
     );
   }
@@ -213,7 +231,7 @@ class BigButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 17),
         decoration: BoxDecoration(
-          color: enabled ? color : AppColors.card,
+          color: enabled ? color : AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(17),
         ),
         child: Row(

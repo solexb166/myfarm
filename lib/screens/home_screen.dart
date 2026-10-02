@@ -199,7 +199,9 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 ok
                     ? t.get('syncAll')
-                    : t.get('syncPending').replaceAll('{n}', '$_pending'),
+                    : t
+                        .get(_pending == 1 ? 'syncPendingOne' : 'syncPending')
+                        .replaceAll('{n}', '$_pending'),
                 style: AppText.body(13.5, color: AppColors.textDim),
               ),
             ),

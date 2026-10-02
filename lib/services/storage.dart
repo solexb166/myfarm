@@ -14,6 +14,10 @@ class Storage {
   static const _kTreatments = 'treatment_overrides';
   static const _kDisplayName = 'display_name';
   static const _kOwner = 'data_owner';
+  static const _kLocationMode = 'location_mode';
+  static const _kHomeDistrict = 'home_district';
+  static const _kHomeSubcounty = 'home_subcounty';
+  static const _kProfileDirty = 'profile_dirty';
 
   // ---- language preference ----
   static Future<String> getLang() async {
@@ -136,6 +140,61 @@ class Storage {
     await p.setString(_kTreatments, jsonEncode(rows));
   }
 
+  // ---- location consent + home area ----
+  // Saving any of these marks the profile for upload on the next sync.
+  static Future<String?> getLocationMode() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kLocationMode);
+  }
+
+  static Future<String?> getHomeDistrict() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kHomeDistrict);
+  }
+
+  static Future<String?> getHomeSubcounty() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kHomeSubcounty);
+  }
+
+  /// Save the farmer's location choice and home area (null clears).
+  static Future<void> setLocation({
+    required String mode,
+    String? district,
+    String? subcounty,
+  }) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kLocationMode, mode);
+    for (final (key, value) in [
+      (_kHomeDistrict, district),
+      (_kHomeSubcounty, subcounty),
+    ]) {
+      if (value == null) {
+        await p.remove(key);
+      } else {
+        await p.setString(key, value);
+      }
+    }
+    await p.setBool(_kProfileDirty, true);
+  }
+
+  static Future<bool> isProfileDirty() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_kProfileDirty) ?? false;
+  }
+
+  static Future<void> setProfileDirty(bool dirty) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_kProfileDirty, dirty);
+  }
+
+  /// Replace the history with scans downloaded from the account (used when
+  /// signing in on a phone with no scans yet).
+  static Future<void> restoreHistory(List<Diagnosis> scans) async {
+    final p = await SharedPreferences.getInstance();
+    await _saveHistory(p, scans.take(30).toList());
+  }
+
   // ---- account ----
   /// Account id the scans and plan on this phone belong to.
   static Future<String?> getDataOwner() async {
@@ -173,6 +232,10 @@ class Storage {
       _kPlanSyncedRev,
       _kDisplayName,
       _kOwner,
+      _kLocationMode,
+      _kHomeDistrict,
+      _kHomeSubcounty,
+      _kProfileDirty,
     ]) {
       await p.remove(k);
     }

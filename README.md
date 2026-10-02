@@ -92,6 +92,8 @@ lib/
     calendar_service.dart         offline rule-based season planner
     storage.dart                  local cache (calendar + history)
     backend.dart                  optional Supabase sync
+    areas.dart                    bundled Uganda districts + sub-counties, GPS lookup
+    location.dart                 location consent + where a scan was made
     l10n.dart                     English + Luganda strings
   screens/
     home_screen.dart
@@ -101,11 +103,14 @@ lib/
     app_gate.dart                 sign in first, then home; saves language
     main_shell.dart               bottom tabs: Home, Calendar, Scans, Account
     sign_in_screen.dart           email code sign-in
-    account_screen.dart           name, backup status, sign out
+    account_screen.dart           name, backup status, location, sign out
+    location_screens.dart         location consent + district / sub-county picker
   widgets/common.dart
 assets/models/                    put trained .tflite + labels here
 supabase/migrations/              backend database schema + treatment seed
 tool/export_treatments.py         regenerates the treatment seed from Dart
+tool/build_areas.py               builds assets/areas + the districts migration
+assets/areas/                     Uganda districts + sub-counties (generated)
 ```
 
 ## Run it
@@ -120,6 +125,11 @@ flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KE
 
 > Note: TFLite generally does not run in the iOS simulator — test on a physical
 > device or an Android emulator.
+
+> **iOS builds** need a location usage description. After `flutter create`,
+> add `NSLocationWhenInUseUsageDescription` to `ios/Runner/Info.plist`, e.g.
+> "MY FARM records the district where you scan a crop, if you agree." (Android
+> needs nothing extra: the permission is already in the manifest.)
 
 ## Notes
 

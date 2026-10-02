@@ -16,6 +16,12 @@ class Diagnosis {
   final String? imagePath; // local file path of the photo
   final int timestamp;
   final bool synced; // uploaded to the backend yet?
+  // Where the scan was made (only with the farmer's consent).
+  final String? districtId;
+  final String? subcounty;
+  final String? locationSource; // 'gps' | 'manual'
+  final double? lat; // rounded to 2 decimals (about 1 km)
+  final double? lng;
 
   Diagnosis({
     required this.crop,
@@ -32,6 +38,11 @@ class Diagnosis {
     this.imagePath,
     int? timestamp,
     this.synced = false,
+    this.districtId,
+    this.subcounty,
+    this.locationSource,
+    this.lat,
+    this.lng,
   }) : timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   factory Diagnosis.fromJson(Map<String, dynamic> j) => Diagnosis(
@@ -49,6 +60,11 @@ class Diagnosis {
         imagePath: j['imagePath']?.toString(),
         timestamp: j['timestamp'] is int ? j['timestamp'] : null,
         synced: j['synced'] == true,
+        districtId: j['districtId']?.toString(),
+        subcounty: j['subcounty']?.toString(),
+        locationSource: j['locationSource']?.toString(),
+        lat: (j['lat'] as num?)?.toDouble(),
+        lng: (j['lng'] as num?)?.toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -66,9 +82,23 @@ class Diagnosis {
         'imagePath': imagePath,
         'timestamp': timestamp,
         'synced': synced,
+        'districtId': districtId,
+        'subcounty': subcounty,
+        'locationSource': locationSource,
+        'lat': lat,
+        'lng': lng,
       };
 
-  Diagnosis copyWith({String? imagePath, bool? synced}) => Diagnosis(
+  Diagnosis copyWith({
+    String? imagePath,
+    bool? synced,
+    String? districtId,
+    String? subcounty,
+    String? locationSource,
+    double? lat,
+    double? lng,
+  }) =>
+      Diagnosis(
         crop: crop,
         label: label,
         diagnosis: diagnosis,
@@ -83,6 +113,11 @@ class Diagnosis {
         imagePath: imagePath ?? this.imagePath,
         timestamp: timestamp,
         synced: synced ?? this.synced,
+        districtId: districtId ?? this.districtId,
+        subcounty: subcounty ?? this.subcounty,
+        locationSource: locationSource ?? this.locationSource,
+        lat: lat ?? this.lat,
+        lng: lng ?? this.lng,
       );
 }
 

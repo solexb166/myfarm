@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/areas.dart';
 import '../services/backend.dart';
+import '../services/location.dart';
 import '../services/l10n.dart';
 import '../services/storage.dart';
 import '../widgets/common.dart';
+import 'location_screens.dart';
 import 'sign_in_screen.dart' show accountErrorKey;
 
 /// The signed-in farmer's account: name, backup status and sign-out.
@@ -23,6 +26,8 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _busy = false;
   String? _error;
   String _savedName = '';
+  LocationMode? _locMode;
+  String? _homeArea; // 'Mbale · Bufumbo'
   bool _nameSaved = false;
   int _pending = 0;
   bool _syncing = false;
@@ -41,6 +46,12 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _refresh() async {
     _pending = await Storage.pendingScanCount();
+    _locMode = LocationMode.parse(await Storage.getLocationMode());
+    final district = await Areas.byId(await Storage.getHomeDistrict());
+    final sub = await Storage.getHomeSubcounty();
+    _homeArea = district == null
+        ? null
+        : [district.name, if (sub != null) sub].join('  ·  ');
     if (mounted) setState(() {});
     final name = await Backend.loadDisplayName() ?? '';
     if (!mounted) return;
@@ -75,6 +86,46 @@ class _AccountScreenState extends State<AccountScreen> {
         _nameSaved = true;
       });
     });
+  }
+
+  Widget _locationCard() {
+    final (icon, key) = switch (_locMode) {
+      LocationMode.gps => (Icons.my_location, 'locStateGps'),
+      LocationMode.manual => (Icons.map_outlined, 'locStateManual'),
+      LocationMode.none => (Icons.location_off_outlined, 'locStateNone'),
+      null => (Icons.location_searching, 'locNotSet'),
+    };
+    return _Card(
+      child: Row(children: [
+        Icon(icon, size: 22, color: AppColors.textDim),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(t.get(key),
+                  style: AppText.body(15.5, weight: FontWeight.w600)),
+              if (_homeArea != null && _locMode != LocationMode.none)
+                Text('${t.get('homeArea')}: $_homeArea',
+                    style: AppText.body(13.5, color: AppColors.textDim)),
+            ],
+          ),
+        ),
+        TextButton(
+          onPressed: () async {
+            await Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => LocationConsentScreen(lang: widget.lang)));
+            Backend.sync();
+            _refresh();
+          },
+          child: Text(t.get('change'),
+              style: AppText.body(14.5,
+                  weight: FontWeight.w700, color: AppColors.primary)),
+        ),
+      ]),
+    );
   }
 
   Future<void> _backUpNow() async {
@@ -222,7 +273,11 @@ class _AccountScreenState extends State<AccountScreen> {
                   child: Text(
                     _pending == 0
                         ? t.get('syncAll')
-                        : t.get('syncPending').replaceAll('{n}', '$_pending'),
+                        : t
+                            .get(_pending == 1
+                                ? 'syncPendingOne'
+                                : 'syncPending')
+                            .replaceAll('{n}', '$_pending'),
                     style: AppText.body(15.5, weight: FontWeight.w600),
                   ),
                 ),
@@ -245,6 +300,9 @@ class _AccountScreenState extends State<AccountScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 26),
+        FieldLabel(t.get('location')),
+        _locationCard(),
         const SizedBox(height: 32),
         _OutlineButton(
           icon: Icons.logout,

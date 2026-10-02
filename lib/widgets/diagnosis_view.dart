@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../models/models.dart';
+import '../services/areas.dart';
 import '../services/inference_service.dart';
 import '../services/l10n.dart';
 import '../services/treatment_db.dart';
@@ -34,12 +35,16 @@ class DiagnosisView extends StatefulWidget {
 class _DiagnosisViewState extends State<DiagnosisView> {
   final _tts = FlutterTts();
   bool _speaking = false;
+  District? _district;
 
   L10n get t => L10n(widget.lang);
 
   @override
   void initState() {
     super.initState();
+    Areas.byId(widget.d.districtId).then((d) {
+      if (mounted && d != null) setState(() => _district = d);
+    });
     _tts.setCompletionHandler(() {
       if (mounted) setState(() => _speaking = false);
     });
@@ -62,7 +67,23 @@ class _DiagnosisViewState extends State<DiagnosisView> {
     await _tts.setSpeechRate(0.46);
     setState(() => _speaking = true);
     final d = widget.d;
-    await _tts.speak(d.spoken.isNotEmpty ? d.spoken : d.diagnosis);
+    final a = _advice();
+    await _tts
+        .speak([d.diagnosis, a.cause, if (!d.healthy) a.organic].join('. '));
+  }
+
+  /// The advice in the current language (and with any corrected text
+  /// downloaded since the scan); falls back to what was saved with it.
+  Treatment _advice() {
+    final d = widget.d;
+    final label = d.label;
+    return label == null
+        ? Treatment(
+            cause: d.cause,
+            organic: d.organic,
+            chemical: d.chemical,
+            prevent: d.prevent)
+        : TreatmentDB.lookup(label, widget.lang);
   }
 
   @override
@@ -71,16 +92,7 @@ class _DiagnosisViewState extends State<DiagnosisView> {
     final photo = d.imagePath == null ? null : File(d.imagePath!);
     final hasPhoto = photo != null && photo.existsSync();
     final cropKey = InferenceService.cropKeyFor(d.crop) ?? '';
-    // Show the advice in the current language (and any corrected text
-    // downloaded since the scan); fall back to what was saved with it.
-    final label = d.label;
-    final advice = label == null
-        ? Treatment(
-            cause: d.cause,
-            organic: d.organic,
-            chemical: d.chemical,
-            prevent: d.prevent)
-        : TreatmentDB.lookup(label, widget.lang);
+    final advice = _advice();
     final crop = InferenceService.crops
         .where((c) => c['key'] == cropKey)
         .map((c) => widget.lang == 'lg' ? c['luganda']! : c['name']!)
@@ -121,6 +133,24 @@ class _DiagnosisViewState extends State<DiagnosisView> {
                             style: AppText.body(15,
                                 weight: FontWeight.w600,
                                 color: AppColors.textDim)),
+                        if (_district != null) ...[
+                          const SizedBox(width: 14),
+                          const Icon(Icons.place_outlined,
+                              size: 18, color: AppColors.textDim),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              [
+                                _district!.name,
+                                if (d.subcounty != null) d.subcounty!
+                              ].join(', '),
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.body(15,
+                                  weight: FontWeight.w600,
+                                  color: AppColors.textDim),
+                            ),
+                          ),
+                        ],
                       ]),
                       const SizedBox(height: 18),
                       _ConfidenceCard(pct: d.confidence, t: t),

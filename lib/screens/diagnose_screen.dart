@@ -5,11 +5,13 @@ import '../theme/app_theme.dart';
 import '../services/l10n.dart';
 import '../services/inference_service.dart';
 import '../services/backend.dart';
+import '../services/location.dart';
 import '../services/storage.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
 import '../widgets/crop_art.dart';
 import '../widgets/diagnosis_view.dart';
+import 'location_screens.dart';
 
 /// Offline crop-disease diagnosis. Flow: pick crop -> photo -> on-device
 /// TFLite classification -> result with treatment (no internet needed).
@@ -39,6 +41,19 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
   void initState() {
     super.initState();
     _checkAvailability();
+    _askLocationOnce();
+  }
+
+  /// Before the first scan is recorded, ask whether to record where scans
+  /// are made. Only needed when scans are uploaded (backend on).
+  Future<void> _askLocationOnce() async {
+    if (!Backend.enabled || await Storage.getLocationMode() != null) return;
+    if (!mounted) return;
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => LocationConsentScreen(lang: widget.lang)));
+    Backend.sync(); // upload the choice to the profile
   }
 
   Future<void> _checkAvailability() async {
@@ -66,12 +81,26 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
       _loading = true;
       _error = null;
     });
+    // Find where the scan is made while the model runs; never wait long.
+    final place = LocationService.placeForScan()
+        .timeout(const Duration(seconds: 10), onTimeout: () => null)
+        .catchError((_) => null);
     try {
-      final d = await InferenceService.classify(
+      var d = await InferenceService.classify(
         image: _image!,
         cropKey: _cropKey!,
         lang: widget.lang,
       );
+      final p = await place;
+      if (p != null) {
+        d = d.copyWith(
+          districtId: p.districtId,
+          subcounty: p.subcounty,
+          locationSource: p.source,
+          lat: p.lat,
+          lng: p.lng,
+        );
+      }
       await Storage.addToHistory(d);
       Backend.sync();
       if (!mounted) return;

@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -114,7 +114,7 @@ class InferenceService {
         orElse: () => {'name': cropKey})['name']!;
     final tr = TreatmentDB.lookup(label, lang);
     final healthy = TreatmentDB.isHealthy(label);
-    final pretty = _prettyLabel(label, cropName);
+    final pretty = prettyLabel(label);
 
     return Diagnosis(
       crop: cropName,
@@ -177,19 +177,36 @@ class InferenceService {
     });
   }
 
-  static String _prettyLabel(String label, String cropName) {
+  /// Crop words model labels start with. Labels don't always use the name
+  /// shown in the app ('bean_rust', 'banana_black_sigatoka').
+  static const _cropPrefixes = {
+    'cassava', 'maize', 'bean', 'beans', 'banana', 'matooke', 'tomato',
+  };
+
+  /// Human name for a model label: 'bean_rust' -> 'Rust',
+  /// 'banana_black_sigatoka' -> 'Black Sigatoka'.
+  @visibleForTesting
+  static String prettyLabel(String label) {
     if (TreatmentDB.isHealthy(label)) return 'Healthy';
-    // Strip a leading crop prefix and title-case the rest.
-    var s = label;
-    final prefix = cropName.toLowerCase();
-    if (s.toLowerCase().startsWith(prefix)) {
-      s = s.substring(prefix.length);
+    var words = label.toLowerCase().split('_').where((w) => w.isNotEmpty);
+    if (words.length > 1 && _cropPrefixes.contains(words.first)) {
+      words = words.skip(1);
     }
-    s = s.replaceAll('_', ' ').trim();
-    return s.split(' ').map((w) {
-      if (w.isEmpty) return w;
-      return w[0].toUpperCase() + w.substring(1);
-    }).join(' ');
+    return words.map((w) => w[0].toUpperCase() + w.substring(1)).join(' ');
+  }
+
+  /// Crop key ('cassava') for a crop name in either language ('Muwogo'), or
+  /// null if it isn't one of [crops].
+  static String? cropKeyFor(String name) {
+    final n = name.trim().toLowerCase();
+    for (final c in crops) {
+      if (c['key'] == n ||
+          c['name']!.toLowerCase() == n ||
+          c['luganda']!.toLowerCase() == n) {
+        return c['key'];
+      }
+    }
+    return null;
   }
 
   static void disposeAll() {

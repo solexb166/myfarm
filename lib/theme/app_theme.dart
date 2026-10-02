@@ -78,6 +78,7 @@ ThemeData buildTheme() {
     textTheme:
         text.apply(bodyColor: AppColors.text, displayColor: AppColors.text),
     dividerColor: AppColors.border,
+    dividerTheme: const DividerThemeData(color: AppColors.border, thickness: 1),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.surface,
       indicatorColor: AppColors.primarySoft,

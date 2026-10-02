@@ -11,7 +11,8 @@ The app bundles a small **TensorFlow Lite** model per crop, trained on real
 crop-disease images (see the `myfarm_ml` training pipeline). When a farmer
 photographs a leaf:
 
-1. They pick the crop (cassava, maize, tomato, beans).
+1. They pick the crop. Cassava, beans and matooke have bundled models; maize
+   shows as "coming soon" until its model is added.
 2. The photo is classified **on the device** by that crop's `.tflite` model — no
    internet needed.
 3. The predicted disease is matched to a bundled **treatment knowledge base**
@@ -124,8 +125,10 @@ flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KE
 
 - **Treatment text** is curated for a student project. Have an agronomist review
   `treatment_db.dart` before any real-world release.
-- **Model quality** varies by crop: cassava and beans are trained on real field
-  photos; maize and tomato use lab images (PlantVillage) and may be less
-  accurate on real garden photos. See the training README.
+- **Model quality** varies by crop: check each crop's confusion matrix in
+  `assets/models/` and the per-class report from its notebook before release.
+- **Crop calendar** templates exist for cassava, maize, beans, matooke and
+  tomato; other crops get a generic plan. The matooke template is simplified
+  and, like the others, should be reviewed by an agronomist.
 - **Voice**: Luganda text is correct; spoken output falls back to the nearest
   available device voice (Swahili), as phones do not ship a Luganda TTS voice.

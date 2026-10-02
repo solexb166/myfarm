@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import '../theme/app_theme.dart';
 
 /// EN / LUG pill toggle.
@@ -46,70 +45,7 @@ class LangToggle extends StatelessWidget {
   }
 }
 
-/// Animated circular confidence indicator.
-class ConfidenceRing extends StatelessWidget {
-  final int pct;
-  const ConfidenceRing({super.key, required this.pct});
-
-  @override
-  Widget build(BuildContext context) {
-    final col = pct >= 80
-        ? AppColors.leaf
-        : pct >= 55
-            ? AppColors.gold
-            : AppColors.rust;
-    return SizedBox(
-      width: 52,
-      height: 52,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: pct / 100),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeOut,
-            builder: (_, v, __) => CustomPaint(
-              size: const Size(52, 52),
-              painter: _RingPainter(v, col),
-            ),
-          ),
-          Text('$pct%',
-              style: AppText.display(14, weight: FontWeight.w700, color: col)),
-        ],
-      ),
-    );
-  }
-}
-
-class _RingPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  _RingPainter(this.progress, this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    const r = 22.0;
-    final track = Paint()
-      ..color = AppColors.line
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5;
-    final fg = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(c, r, track);
-    canvas.drawArc(Rect.fromCircle(center: c, radius: r), -math.pi / 2,
-        2 * math.pi * progress, false, fg);
-  }
-
-  @override
-  bool shouldRepaint(_RingPainter old) =>
-      old.progress != progress || old.color != color;
-}
-
-/// Titled card block for diagnosis sections.
+/// Titled card for one part of the advice (cause, treatment, prevention).
 class InfoBlock extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -124,27 +60,37 @@ class InfoBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = tint ?? AppColors.creamDim;
+    final accent = tint ?? AppColors.textDim;
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tint?.withOpacity(0.19) ?? AppColors.line),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Icon(icon, size: 17, color: tint ?? AppColors.leafBright),
-            const SizedBox(width: 8),
-            Text(label.toUpperCase(),
-                style: AppText.display(13,
-                    weight: FontWeight.w700, color: accent, spacing: 0.3)),
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, size: 17, color: accent),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(label,
+                  style: AppText.body(15.5, weight: FontWeight.w700)),
+            ),
           ]),
-          const SizedBox(height: 7),
-          Text(text, style: AppText.body(15, color: AppColors.cream)),
+          const SizedBox(height: 10),
+          Text(text, style: AppText.body(15, color: AppColors.text)),
         ],
       ),
     );

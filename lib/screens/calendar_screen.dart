@@ -141,11 +141,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _label(t.get('crop')),
-              _textField(_cropCtrl, t.get('cropPh'),
+              FieldLabel(t.get('crop')),
+              AppTextField(
+                  controller: _cropCtrl,
+                  hint: t.get('cropPh'),
                   onChanged: (_) => setState(() {})),
               const SizedBox(height: 16),
-              _label(t.get('planted')),
+              FieldLabel(t.get('planted')),
               GestureDetector(
                 onTap: _pickDate,
                 child: Container(
@@ -174,8 +176,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _label(t.get('region')),
-              _textField(_regionCtrl, t.get('regionPh')),
+              FieldLabel(t.get('region')),
+              AppTextField(controller: _regionCtrl, hint: t.get('regionPh')),
               const SizedBox(height: 24),
               BigButton(
                 label: _loading ? t.get('building') : t.get('generate'),
@@ -273,36 +275,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     ]);
-  }
-
-  Widget _label(String s) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(s, style: AppText.display(14.5, weight: FontWeight.w700)),
-      );
-
-  Widget _textField(TextEditingController c, String hint,
-      {ValueChanged<String>? onChanged}) {
-    return TextField(
-      controller: c,
-      onChanged: onChanged,
-      style: AppText.body(16, color: AppColors.cream),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: AppText.body(15, color: AppColors.creamDim),
-        filled: true,
-        fillColor: AppColors.card,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.line),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.gold),
-        ),
-      ),
-    );
   }
 }
 

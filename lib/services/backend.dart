@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,9 +20,10 @@ class Backend {
   static const _timeout = Duration(seconds: 60);
 
   static bool _enabled = false;
-  static bool _running = false;
+  static Future<void>? _running;
   static bool _again = false;
 
+  static bool get enabled => _enabled;
   static SupabaseClient get _db => Supabase.instance.client;
 
   static Future<void> init() async {
@@ -35,26 +37,27 @@ class Backend {
   }
 
   /// Sync in the background. Safe to call often (after every change): calls
-  /// made while a sync is running are folded into one more pass. Never
-  /// throws - if the phone is offline, the next call picks up where it left.
-  static Future<void> sync() async {
-    if (!_enabled) return;
-    if (_running) {
+  /// made while a sync is running are folded into one more pass, and the
+  /// returned future completes when it's done. Never throws - if the phone is
+  /// offline, the next call picks up where it left off.
+  static Future<void> sync() {
+    if (!_enabled) return Future.value();
+    if (_running != null) {
       _again = true;
-      return;
+      return _running!;
     }
-    _running = true;
-    try {
-      do {
-        _again = false;
-        await _step('treatments', _pullTreatments);
-        if (!await _signIn()) break;
-        await _step('scans', _pushScans);
-        await _step('plan', _pushPlan);
-      } while (_again);
-    } finally {
-      _running = false;
-    }
+    return _running = _syncLoop().whenComplete(() => _running = null);
+  }
+
+  static Future<void> _syncLoop() async {
+    do {
+      _again = false;
+      await _step('treatments', _pullTreatments);
+      if (!await _signIn()) break;
+      if (account != null) await _step('account merge', _finishMerge);
+      await _step('scans', _pushScans);
+      await _step('plan', _pushPlan);
+    } while (_again);
   }
 
   static Future<void> _step(String name, Future<void> Function() run) async {
@@ -65,8 +68,8 @@ class Backend {
     }
   }
 
-  /// Each phone gets an anonymous account the first time it's online, so its
-  /// rows are private to it. (It can be upgraded to phone/email login later.)
+  /// Each phone gets an anonymous account the first time it's online, so it
+  /// can back up scans before (or without) the farmer signing in.
   static Future<bool> _signIn() async {
     if (_db.auth.currentUser != null) return true;
     try {
@@ -77,6 +80,129 @@ class Backend {
       return false;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Email accounts
+  // ---------------------------------------------------------------------------
+
+  /// The farmer's email account, or null while the phone only has its
+  /// anonymous account (or the backend is off).
+  static User? get account {
+    if (!_enabled) return null;
+    final u = _db.auth.currentUser;
+    return (u == null || u.isAnonymous) ? null : u;
+  }
+
+  /// Fires when the farmer signs in or out (not on routine token refreshes).
+  static Stream<void> get accountChanges => _enabled
+      ? _db.auth.onAuthStateChange
+          .where((s) =>
+              s.event == AuthChangeEvent.signedIn ||
+              s.event == AuthChangeEvent.signedOut)
+          .map((_) {})
+      : const Stream.empty();
+
+  static bool looksLikeEmail(String s) =>
+      RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$').hasMatch(s.trim());
+
+  /// Step 1 of signing in: email the farmer a code. Creates the account if
+  /// this email is new.
+  static Future<void> sendEmailCode(String email) async {
+    try {
+      // Whichever account this phone signs in to takes over the scans it
+      // backed up anonymously. See supabase/migrations/*_accounts.sql.
+      final u = _db.auth.currentUser;
+      if (u != null && u.isAnonymous) {
+        try {
+          final ticket = await _db.rpc('start_account_merge').timeout(_timeout);
+          await Storage.setMergeTicket(ticket as String);
+        } on PostgrestException catch (e) {
+          debugPrint('Could not start account merge: $e');
+        }
+      }
+      await _db.auth.signInWithOtp(email: email).timeout(_timeout);
+    } catch (e) {
+      throw AccountError.from(e);
+    }
+  }
+
+  /// Step 2 of signing in: check the code from the email.
+  static Future<void> verifyEmailCode(String email, String code) async {
+    try {
+      await _db.auth
+          .verifyOTP(type: OtpType.email, email: email, token: code)
+          .timeout(_timeout);
+    } catch (e) {
+      throw AccountError.from(e);
+    }
+    // The plan on this phone is the one the farmer is looking at, so the
+    // account should have it too.
+    if (await Storage.getPlan() != null) await Storage.markPlanUnsynced();
+    unawaited(sync());
+  }
+
+  /// Move the anonymous data to the signed-in account. A ticket is kept
+  /// until the server has answered, so a dropped connection retries later.
+  static Future<void> _finishMerge() async {
+    final ticket = await Storage.getMergeTicket();
+    if (ticket == null) return;
+    try {
+      await _db.rpc('finish_account_merge', params: {'merge_ticket': ticket});
+    } on PostgrestException catch (e) {
+      debugPrint('Account merge rejected: $e');
+    }
+    await Storage.setMergeTicket(null);
+  }
+
+  /// Sign out and remove the farmer's records from this phone. The caller
+  /// should warn first if [Storage.pendingScanCount] is not zero.
+  static Future<void> signOut() async {
+    if (_enabled) {
+      try {
+        await _db.auth.signOut();
+      } catch (e) {
+        // Offline: the session is already removed from the phone.
+        debugPrint('Sign-out request failed: $e');
+      }
+    }
+    await Storage.clearAccountData();
+  }
+
+  /// The farmer's name, from the server when online, else the cached copy.
+  static Future<String?> loadDisplayName() async {
+    final u = account;
+    if (u == null) return null;
+    try {
+      final row = await _db
+          .from('profiles')
+          .select('display_name')
+          .eq('id', u.id)
+          .maybeSingle()
+          .timeout(_timeout);
+      final name = row?['display_name'] as String?;
+      await Storage.setDisplayName(name);
+      return name;
+    } catch (e) {
+      return Storage.getDisplayName();
+    }
+  }
+
+  static Future<void> saveDisplayName(String name) async {
+    final u = account;
+    if (u == null) return;
+    try {
+      await _db
+          .from('profiles')
+          .upsert({'id': u.id, 'display_name': name}).timeout(_timeout);
+    } catch (e) {
+      throw AccountError.from(e);
+    }
+    await Storage.setDisplayName(name);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sync steps
+  // ---------------------------------------------------------------------------
 
   static Future<void> _pullTreatments() async {
     final rows = await _db
@@ -166,4 +292,27 @@ class Backend {
         'heic' => 'image/heic',
         _ => 'image/jpeg',
       };
+}
+
+/// Why an account action failed, in terms the UI can explain to a farmer.
+enum AccountError implements Exception {
+  offline,
+  wrongCode,
+  tooManyTries,
+  failed;
+
+  static AccountError from(Object e) {
+    if (e is AccountError) return e;
+    if (e is AuthRetryableFetchException) return offline;
+    if (e is AuthException) {
+      if (e.statusCode == '429' || (e.code ?? '').contains('rate_limit')) {
+        return tooManyTries;
+      }
+      if (e.code == 'otp_expired' || e.statusCode == '403') return wrongCode;
+      return failed;
+    }
+    if (e is PostgrestException) return failed;
+    // SocketException, TimeoutException, http ClientException, ...
+    return offline;
+  }
 }

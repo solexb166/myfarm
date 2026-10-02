@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/l10n.dart';
+import '../services/backend.dart';
 import '../widgets/common.dart';
+import 'account_screen.dart';
 import 'diagnose_screen.dart';
 import 'calendar_screen.dart';
 import 'history_screen.dart';
@@ -148,9 +150,51 @@ class _HomeScreenState extends State<HomeScreen> {
         Positioned(
           top: 16,
           right: 16,
-          child: LangToggle(lang: lang, onChange: _setLang),
+          child: Row(children: [
+            if (Backend.enabled) ...[
+              _AccountButton(
+                signedIn: Backend.account != null,
+                onTap: () async {
+                  await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => AccountScreen(lang: lang)));
+                  if (mounted) setState(() {});
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
+            LangToggle(lang: lang, onChange: _setLang),
+          ]),
         ),
       ]),
+    );
+  }
+}
+
+/// Round account button next to the language toggle.
+class _AccountButton extends StatelessWidget {
+  final bool signedIn;
+  final VoidCallback onTap;
+  const _AccountButton({required this.signedIn, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          signedIn ? Icons.account_circle : Icons.person_outline,
+          size: 21,
+          color: signedIn ? AppColors.leafBright : AppColors.creamDim,
+        ),
+      ),
     );
   }
 }

@@ -12,6 +12,8 @@ class Storage {
   static const _kHistory = 'scan_history';
   static const _kLang = 'lang';
   static const _kTreatments = 'treatment_overrides';
+  static const _kMergeTicket = 'account_merge_ticket';
+  static const _kDisplayName = 'display_name';
 
   // ---- language preference ----
   static Future<String> getLang() async {
@@ -47,6 +49,13 @@ class Storage {
   static Future<void> clearPlan() async {
     final p = await SharedPreferences.getInstance();
     await p.remove(_kPlan);
+    await _bumpPlanRev(p);
+  }
+
+  /// Make the next sync push the local plan even if it hasn't changed
+  /// (e.g. after signing in to a different account).
+  static Future<void> markPlanUnsynced() async {
+    final p = await SharedPreferences.getInstance();
     await _bumpPlanRev(p);
   }
 
@@ -103,8 +112,10 @@ class Storage {
             .toList());
   }
 
-  static Future<void> _saveHistory(
-          SharedPreferences p, List<Diagnosis> list) =>
+  static Future<int> pendingScanCount() async =>
+      (await getHistory()).where((d) => !d.synced).length;
+
+  static Future<void> _saveHistory(SharedPreferences p, List<Diagnosis> list) =>
       p.setString(_kHistory, jsonEncode(list.map((e) => e.toJson()).toList()));
 
   // ---- treatment text downloaded from the backend ----
@@ -123,5 +134,53 @@ class Storage {
       List<Map<String, dynamic>> rows) async {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kTreatments, jsonEncode(rows));
+  }
+
+  // ---- account ----
+  /// Ticket that moves this phone's anonymous data to the account being
+  /// signed in to. Kept on disk because the phone may close the app while
+  /// the farmer checks their email.
+  static Future<String?> getMergeTicket() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kMergeTicket);
+  }
+
+  static Future<void> setMergeTicket(String? ticket) async {
+    final p = await SharedPreferences.getInstance();
+    if (ticket == null) {
+      await p.remove(_kMergeTicket);
+    } else {
+      await p.setString(_kMergeTicket, ticket);
+    }
+  }
+
+  static Future<String?> getDisplayName() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kDisplayName);
+  }
+
+  static Future<void> setDisplayName(String? name) async {
+    final p = await SharedPreferences.getInstance();
+    if (name == null || name.isEmpty) {
+      await p.remove(_kDisplayName);
+    } else {
+      await p.setString(_kDisplayName, name);
+    }
+  }
+
+  /// Remove the signed-in farmer's records from this phone (on sign-out).
+  /// Language and downloaded treatment text are not personal, so they stay.
+  static Future<void> clearAccountData() async {
+    final p = await SharedPreferences.getInstance();
+    for (final k in [
+      _kHistory,
+      _kPlan,
+      _kPlanRev,
+      _kPlanSyncedRev,
+      _kMergeTicket,
+      _kDisplayName,
+    ]) {
+      await p.remove(k);
+    }
   }
 }

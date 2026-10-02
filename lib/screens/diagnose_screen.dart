@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../theme/app_theme.dart';
 import '../services/l10n.dart';
 import '../services/inference_service.dart';
+import '../services/backend.dart';
 import '../services/storage.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
@@ -84,6 +85,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
         lang: widget.lang,
       );
       await Storage.addToHistory(d);
+      Backend.sync();
       if (!mounted) return;
       setState(() {
         _result = d;

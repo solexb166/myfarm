@@ -1,8 +1,9 @@
 /// Plain data models. All JSON-serialisable so they can be cached to disk
-/// (shared_preferences) and work offline once fetched.
+/// (shared_preferences) and synced to the backend when online.
 
 class Diagnosis {
   final String crop;
+  final String? label; // raw model class, e.g. 'cassava_mosaic_disease'
   final String diagnosis;
   final int confidence;
   final bool healthy;
@@ -11,11 +12,14 @@ class Diagnosis {
   final String chemical;
   final String prevent;
   final String spoken;
+  final String lang; // language the advice was given in: 'en' | 'lg'
   final String? imagePath; // local file path of the photo
   final int timestamp;
+  final bool synced; // uploaded to the backend yet?
 
   Diagnosis({
     required this.crop,
+    this.label,
     required this.diagnosis,
     required this.confidence,
     required this.healthy,
@@ -24,12 +28,15 @@ class Diagnosis {
     required this.chemical,
     required this.prevent,
     required this.spoken,
+    this.lang = 'en',
     this.imagePath,
     int? timestamp,
+    this.synced = false,
   }) : timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   factory Diagnosis.fromJson(Map<String, dynamic> j) => Diagnosis(
         crop: (j['crop'] ?? '').toString(),
+        label: j['label']?.toString(),
         diagnosis: (j['diagnosis'] ?? 'Unknown').toString(),
         confidence: _toInt(j['confidence']),
         healthy: j['healthy'] == true,
@@ -38,12 +45,15 @@ class Diagnosis {
         chemical: (j['chemical'] ?? '').toString(),
         prevent: (j['prevent'] ?? '').toString(),
         spoken: (j['spoken'] ?? '').toString(),
+        lang: (j['lang'] ?? 'en').toString(),
         imagePath: j['imagePath']?.toString(),
         timestamp: j['timestamp'] is int ? j['timestamp'] : null,
+        synced: j['synced'] == true,
       );
 
   Map<String, dynamic> toJson() => {
         'crop': crop,
+        'label': label,
         'diagnosis': diagnosis,
         'confidence': confidence,
         'healthy': healthy,
@@ -52,12 +62,15 @@ class Diagnosis {
         'chemical': chemical,
         'prevent': prevent,
         'spoken': spoken,
+        'lang': lang,
         'imagePath': imagePath,
         'timestamp': timestamp,
+        'synced': synced,
       };
 
-  Diagnosis copyWith({String? imagePath}) => Diagnosis(
+  Diagnosis copyWith({String? imagePath, bool? synced}) => Diagnosis(
         crop: crop,
+        label: label,
         diagnosis: diagnosis,
         confidence: confidence,
         healthy: healthy,
@@ -66,8 +79,10 @@ class Diagnosis {
         chemical: chemical,
         prevent: prevent,
         spoken: spoken,
+        lang: lang,
         imagePath: imagePath ?? this.imagePath,
         timestamp: timestamp,
+        synced: synced ?? this.synced,
       );
 }
 
@@ -111,12 +126,14 @@ class CropPlan {
   final String crop;
   final String summary;
   final String plantedDate;
+  final String region;
   final List<CropTask> tasks;
 
   CropPlan({
     required this.crop,
     required this.summary,
     required this.plantedDate,
+    this.region = '',
     required this.tasks,
   });
 
@@ -124,6 +141,7 @@ class CropPlan {
         crop: (j['crop'] ?? '').toString(),
         summary: (j['summary'] ?? '').toString(),
         plantedDate: (j['plantedDate'] ?? '').toString(),
+        region: (j['region'] ?? '').toString(),
         tasks: ((j['tasks'] ?? []) as List)
             .map((e) => CropTask.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -133,6 +151,7 @@ class CropPlan {
         'crop': crop,
         'summary': summary,
         'plantedDate': plantedDate,
+        'region': region,
         'tasks': tasks.map((t) => t.toJson()).toList(),
       };
 }

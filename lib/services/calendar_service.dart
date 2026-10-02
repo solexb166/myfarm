@@ -36,6 +36,7 @@ class CalendarService {
       crop: cropName,
       summary: summary,
       plantedDate: _fmt(planted),
+      region: region,
       tasks: tasks,
     );
   }

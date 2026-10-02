@@ -5,6 +5,11 @@ workflows:
     environment:
       flutter: stable
       java: 17
+      # Optional Supabase backend: create a variable group named "supabase"
+      # holding SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, then uncomment.
+      # Without them the app builds as before, fully offline.
+      # groups:
+      #   - supabase
     scripts:
       - name: Regenerate Android platform files (fix v1 embedding)
         script: flutter create --platforms=android .
@@ -94,11 +99,20 @@ workflows:
             echo "=== signing wired in ==="; cat "$BG"
           fi
       - name: Build Android App Bundle (for Play Store)
-        script: flutter build appbundle --release
+        script: |
+          flutter build appbundle --release \
+            --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"
       - name: Build APK (for direct sharing)
-        script: flutter build apk --release
+        script: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"
       - name: Build DEBUG APK (shows real crash errors on screen)
-        script: flutter build apk --debug
+        script: |
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"
     artifacts:
       - build/**/outputs/**/*.aab
       - build/**/outputs/**/*.apk

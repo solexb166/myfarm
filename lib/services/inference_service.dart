@@ -118,6 +118,7 @@ class InferenceService {
 
     return Diagnosis(
       crop: cropName,
+      label: label,
       diagnosis: pretty,
       confidence: confidence,
       healthy: healthy,
@@ -126,6 +127,7 @@ class InferenceService {
       chemical: tr.chemical,
       prevent: tr.prevent,
       spoken: '$pretty. ${tr.cause} ${healthy ? '' : tr.organic}',
+      lang: lang,
       imagePath: image.path,
     );
   }

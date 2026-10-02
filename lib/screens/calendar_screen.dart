@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../services/l10n.dart';
 import '../services/calendar_service.dart';
+import '../services/backend.dart';
 import '../services/storage.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
@@ -88,6 +89,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         lang: widget.lang,
       );
       await Storage.savePlan(plan);
+      Backend.sync();
       if (!mounted) return;
       setState(() {
         _plan = plan;
@@ -106,6 +108,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _toggleTask(int i) async {
     setState(() => _plan!.tasks[i].done = !_plan!.tasks[i].done);
     await Storage.savePlan(_plan!);
+    Backend.sync();
   }
 
   void _startNew() {
@@ -115,7 +118,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _regionCtrl.clear();
       _planted = null;
     });
-    Storage.clearPlan();
+    Storage.clearPlan().then((_) => Backend.sync());
   }
 
   @override

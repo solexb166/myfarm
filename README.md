@@ -22,6 +22,13 @@ The crop calendar is also fully offline: it is generated from per-crop
 growth-stage templates (`lib/services/calendar_service.dart`) and the planting
 date. Calendar and scan history are stored on the device.
 
+## Optional backend (Supabase)
+
+When built with Supabase settings, the app also backs up scans (with photos)
+and the crop plan, and downloads updated treatment text whenever it is online.
+It still works fully offline without them. Setup, schema and how to edit
+treatments are described in [`supabase/README.md`](supabase/README.md).
+
 ## Training the models
 
 There is one Colab notebook per crop in `ml/`. Each uses transfer learning
@@ -80,6 +87,7 @@ lib/
     treatment_db.dart             offline treatment knowledge base (EN + LG)
     calendar_service.dart         offline rule-based season planner
     storage.dart                  local cache (calendar + history)
+    backend.dart                  optional Supabase sync
     l10n.dart                     English + Luganda strings
   screens/
     home_screen.dart
@@ -88,6 +96,8 @@ lib/
     history_screen.dart           saved past diagnoses
   widgets/common.dart
 assets/models/                    put trained .tflite + labels here
+supabase/migrations/              backend database schema + treatment seed
+tool/export_treatments.py         regenerates the treatment seed from Dart
 ```
 
 ## Run it
@@ -96,6 +106,8 @@ assets/models/                    put trained .tflite + labels here
 flutter create .          # fills in native scaffolding around lib/
 flutter pub get
 flutter run
+# with the backend:
+flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=...
 ```
 
 > Note: TFLite generally does not run in the iOS simulator — test on a physical

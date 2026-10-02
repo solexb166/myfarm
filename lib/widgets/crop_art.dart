@@ -2,9 +2,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Flat illustration of a crop (cassava leaf, bean pods, matooke bunch,
-/// maize cob), drawn in code so it needs no image assets. Unknown crops get
-/// a generic leaf. Shown on a soft rounded tile unless [tile] is false.
+/// Picture of a crop. Uses a real photo from assets/crops/<crop>.jpg when
+/// one is bundled, and otherwise a flat illustration drawn in code (cassava
+/// roots, bean pods, matooke bunch, maize cob; a leaf for anything else).
+/// Shown on a rounded tile unless [tile] is false (then a small circle).
 class CropArt extends StatelessWidget {
   final String cropKey;
   final double size;
@@ -18,8 +19,55 @@ class CropArt extends StatelessWidget {
     this.muted = false,
   });
 
+  /// Where a crop's photo goes. See assets/crops/README.txt.
+  static String photoPath(String cropKey) => 'assets/crops/$cropKey.jpg';
+
   @override
   Widget build(BuildContext context) {
+    final radius = tile ? size * 0.28 : size / 2;
+    final drawing = _drawing();
+    if (cropKey.isEmpty) return drawing;
+    final photo = ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Image.asset(
+        photoPath(cropKey),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        // Shrink large photos in memory to the size they're shown at.
+        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        // No photo bundled for this crop: use the drawing.
+        errorBuilder: (_, __, ___) => drawing,
+        frameBuilder: (_, child, frame, sync) =>
+            sync || frame != null ? child : _blank(radius),
+      ),
+    );
+    if (!muted) return photo;
+    // "Coming soon" crops: faded and grey.
+    return Opacity(
+      opacity: 0.55,
+      child: ColorFiltered(
+        colorFilter: const ColorFilter.matrix(<double>[
+          0.2126, 0.7152, 0.0722, 0, 0, //
+          0.2126, 0.7152, 0.0722, 0, 0, //
+          0.2126, 0.7152, 0.0722, 0, 0, //
+          0, 0, 0, 1, 0,
+        ]),
+        child: photo,
+      ),
+    );
+  }
+
+  Widget _blank(double radius) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+
+  Widget _drawing() {
     final art = CustomPaint(
       size: Size.square(tile ? size * 0.72 : size),
       painter: _CropPainter(cropKey, muted),

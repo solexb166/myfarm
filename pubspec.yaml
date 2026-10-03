@@ -30,6 +30,8 @@ dependencies:
   supabase_flutter: ^2.18.0
   # Coarse location for "diseases near you" (only with the farmer's consent)
   geolocator: ^14.0.0
+  # Opens the privacy policy in the browser
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_lints: ^3.0.1

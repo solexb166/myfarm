@@ -36,6 +36,32 @@ void main() {
     }
   });
 
+  test('phone check accepts Ugandan mobile numbers however they are typed', () {
+    for (final ok in [
+      '0772123456',
+      '0772 123 456',
+      '772123456',
+      '+256772123456',
+      '256 772-123-456',
+      ' (0)772 123456 '.replaceAll('(0)', ''),
+    ]) {
+      expect(Backend.ugandaPhone(ok), '+256772123456', reason: ok);
+    }
+    for (final bad in [
+      '',
+      '0414123456', // landline: can't get an SMS
+      '077212345', // too short
+      '07721234567', // too long
+      '+254712345678', // Kenya
+      '0772abc456',
+    ]) {
+      expect(Backend.ugandaPhone(bad), isNull, reason: bad);
+    }
+    expect(Backend.formatPhone('256772123456'), '+256 772 123456');
+    expect(Backend.formatPhone('+256772123456'), '+256 772 123456');
+    expect(Backend.formatPhone('447700900123'), '+447700900123');
+  });
+
   test('auth failures map to messages a farmer can act on', () {
     expect(AccountError.from(const SocketException('no route')),
         AccountError.offline);
@@ -82,6 +108,23 @@ void main() {
     expect(await Storage.getTreatmentOverrides(), hasLength(1));
   });
 
+  testWidgets('sign-in screen rejects an invalid phone number offline',
+      (tester) async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    await tester.pumpWidget(
+        MaterialApp(home: SignInScreen(lang: 'en', onLang: (_) {})));
+    await tester.pump();
+
+    // Phone is the default way to sign in.
+    expect(find.text('Phone number'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '0414 123456');
+    await tester.tap(find.text('Send sign-in code'));
+    await tester.pump();
+
+    expect(find.text('Enter a Ugandan mobile number, like 0772 123456.'),
+        findsOneWidget);
+  });
+
   testWidgets('sign-in screen rejects an invalid email without a network call',
       (tester) async {
     GoogleFonts.config.allowRuntimeFetching = false;
@@ -90,6 +133,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Sign in to get started'), findsOneWidget);
+    await tester.tap(find.text('Email'));
+    await tester.pump();
     await tester.enterText(find.byType(TextField), 'nakato@gmail');
     await tester.tap(find.text('Send sign-in code'));
     await tester.pump();

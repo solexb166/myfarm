@@ -4,12 +4,14 @@ import '../services/areas.dart';
 import '../services/backend.dart';
 import '../services/location.dart';
 import '../services/l10n.dart';
+import '../services/links.dart';
 import '../services/storage.dart';
 import '../widgets/common.dart';
 import 'location_screens.dart';
 import 'sign_in_screen.dart' show accountErrorKey;
 
-/// The signed-in farmer's account: name, backup status and sign-out.
+/// The signed-in farmer's account: name, backup status, location choice,
+/// privacy (policy and account deletion) and sign-out.
 /// (Signing in happens on [SignInScreen], before the app opens.)
 class AccountScreen extends StatefulWidget {
   final String lang;
@@ -178,6 +180,78 @@ class _AccountScreenState extends State<AccountScreen> {
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.get('deleteTitle'),
+            style: AppText.display(20, weight: FontWeight.w700)),
+        content: Text(t.get('deleteBody'),
+            style: AppText.body(15, color: AppColors.textDim)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(t.get('cancel'),
+                style: AppText.body(15,
+                    weight: FontWeight.w600, color: AppColors.text)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(t.get('deleteConfirm'),
+                style: AppText.body(15,
+                    weight: FontWeight.w700, color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    setState(() => _busy = true);
+    try {
+      await Backend.deleteAccount();
+    } on AccountError catch (e) {
+      // Shown here rather than under the name field, which is far away.
+      messenger
+          .showSnackBar(SnackBar(content: Text(t.get(accountErrorKey(e)))));
+      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    messenger.showSnackBar(SnackBar(content: Text(t.get('deleted'))));
+    // AppGate now shows the sign-in screen underneath.
+    navigator.popUntil((r) => r.isFirst);
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    if (await Links.open(Links.privacyPolicy) || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text(t.get('noBrowser').replaceAll('{url}', Links.privacyPolicy))));
+  }
+
+  Widget _privacyCard() {
+    return _Card(
+      padding: EdgeInsets.zero,
+      child: Column(children: [
+        _LinkRow(
+          icon: Icons.privacy_tip_outlined,
+          title: t.get('privacyPolicy'),
+          trailing: Icons.open_in_new,
+          onTap: _openPrivacyPolicy,
+        ),
+        const Divider(height: 1),
+        _LinkRow(
+          icon: Icons.delete_outline,
+          title: t.get('deleteAccount'),
+          sub: t.get('deleteAccountSub'),
+          color: AppColors.danger,
+          onTap: _busy || _syncing ? null : _deleteAccount,
+        ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final account = Backend.account;
@@ -185,10 +259,14 @@ class _AccountScreenState extends State<AccountScreen> {
       body: SafeArea(
         child: Column(children: [
           TopBar(title: t.get('account')),
+          if (_busy)
+            const LinearProgressIndicator(
+                minHeight: 2, color: AppColors.primary),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
-              child: _buildAccount(account?.email ?? ''),
+              child: _buildAccount(
+                  account == null ? '' : Backend.accountLabel(account)),
             ),
           ),
           // Sign out stays at the bottom of the screen, apart from the
@@ -211,7 +289,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   // ---------- SIGNED IN ----------
-  Widget _buildAccount(String email) {
+  Widget _buildAccount(String signedInAs) {
     final nameChanged = _nameCtrl.text.trim() != _savedName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,7 +308,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
-                  Text('${t.get('signedInAs')} $email',
+                  Text('${t.get('signedInAs')} $signedInAs',
                       style: AppText.body(13.5, color: AppColors.creamDim),
                       overflow: TextOverflow.ellipsis),
                 ],
@@ -317,6 +395,9 @@ class _AccountScreenState extends State<AccountScreen> {
         const SizedBox(height: 26),
         FieldLabel(t.get('location')),
         _locationCard(),
+        const SizedBox(height: 26),
+        FieldLabel(t.get('privacy')),
+        _privacyCard(),
       ],
     );
   }
@@ -324,12 +405,14 @@ class _AccountScreenState extends State<AccountScreen> {
 
 class _Card extends StatelessWidget {
   final Widget child;
-  const _Card({required this.child});
+  final EdgeInsets padding;
+  const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
 
   @override
   Widget build(BuildContext context) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: padding,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(18),
@@ -369,6 +452,56 @@ class _OutlineButton extends StatelessWidget {
               style: AppText.display(16,
                   weight: FontWeight.w700, color: c, spacing: 0)),
         ]),
+      ),
+    );
+  }
+}
+
+/// Tappable row inside a card: icon, title, optional subtitle.
+class _LinkRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? sub;
+  final IconData trailing;
+  final Color color;
+  final VoidCallback? onTap;
+  const _LinkRow({
+    required this.icon,
+    required this.title,
+    this.sub,
+    this.trailing = Icons.chevron_right,
+    this.color = AppColors.text,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = onTap == null ? AppColors.textDim : color;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          child: Row(children: [
+            Icon(icon, size: 22, color: c),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: AppText.body(15.5,
+                          weight: FontWeight.w600, color: c)),
+                  if (sub != null)
+                    Text(sub!,
+                        style: AppText.body(13.5, color: AppColors.textDim)),
+                ],
+              ),
+            ),
+            Icon(trailing, size: 19, color: AppColors.textDim),
+          ]),
+        ),
       ),
     );
   }

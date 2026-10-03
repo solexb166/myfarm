@@ -227,6 +227,7 @@ class AppTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final Iterable<String>? autofillHints;
   final IconData? icon;
+  final String? prefixText;
   final bool enabled;
   final bool autofocus;
   const AppTextField({
@@ -238,6 +239,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.autofillHints,
     this.icon,
+    this.prefixText,
     this.enabled = true,
     this.autofocus = false,
   });
@@ -260,6 +262,8 @@ class AppTextField extends StatelessWidget {
         prefixIcon: icon == null
             ? null
             : Icon(icon, size: 20, color: AppColors.creamDim),
+        prefixText: prefixText,
+        prefixStyle: AppText.body(16, color: AppColors.cream),
         filled: true,
         fillColor: AppColors.card,
         contentPadding:

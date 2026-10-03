@@ -72,7 +72,7 @@ class Backend {
   }
 
   // ---------------------------------------------------------------------------
-  // Email accounts
+  // Accounts: phone (SMS code) or email (emailed code), no passwords
   // ---------------------------------------------------------------------------
 
   /// The signed-in farmer, or null (also when the backend is off). Stays set
@@ -82,6 +82,14 @@ class Backend {
     if (!_enabled) return null;
     final u = _db.auth.currentUser;
     return (u == null || u.isAnonymous) ? null : u;
+  }
+
+  /// How the farmer signed in, for display: their email, or their phone
+  /// number as +256 772 123456.
+  static String accountLabel(User u) {
+    final email = u.email ?? '';
+    if (email.isNotEmpty) return email;
+    return formatPhone(u.phone ?? '');
   }
 
   /// Fires when the farmer signs in or out (not on routine token refreshes).
@@ -96,8 +104,61 @@ class Backend {
   static bool looksLikeEmail(String s) =>
       RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$').hasMatch(s.trim());
 
-  /// Step 1 of signing in: email the farmer a code. Creates the account if
-  /// this email is new.
+  /// A Ugandan mobile number in E.164 form (+2567XXXXXXXX), from whatever
+  /// the farmer typed: 0772 123456, 772123456, +256 772 123 456, ...
+  /// Null if it isn't one. Only mobile numbers (07...) can receive the code,
+  /// and the SMS hook only sends to Uganda.
+  static String? ugandaPhone(String input) {
+    var digits = input.replaceAll(RegExp(r'[\s\-().]'), '');
+    if (!RegExp(r'^\+?\d+$').hasMatch(digits)) return null;
+    digits = digits.replaceFirst('+', '');
+    if (digits.startsWith('256')) {
+      digits = digits.substring(3);
+    } else if (digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    return RegExp(r'^7\d{8}$').hasMatch(digits) ? '+256$digits' : null;
+  }
+
+  /// +256772123456 or 256772123456 as "+256 772 123456". Other numbers are
+  /// returned with a leading + only.
+  static String formatPhone(String phone) {
+    final d = phone.replaceAll(RegExp(r'\D'), '');
+    if (d.isEmpty) return '';
+    if (d.length == 12 && d.startsWith('256')) {
+      return '+256 ${d.substring(3, 6)} ${d.substring(6)}';
+    }
+    return '+$d';
+  }
+
+  /// Step 1 of signing in by phone: text the farmer a code. Creates the
+  /// account if this number is new. [phone] comes from [ugandaPhone].
+  static Future<void> sendPhoneCode(String phone, {String lang = 'en'}) async {
+    try {
+      await _db.auth
+          // `lang` lets the SMS hook word new farmers' first code in their
+          // language.
+          .signInWithOtp(phone: phone, data: {'lang': lang}).timeout(_timeout);
+    } catch (e) {
+      throw AccountError.from(e);
+    }
+  }
+
+  /// Step 2 of signing in by phone: check the code from the SMS.
+  static Future<void> verifyPhoneCode(String phone, String code) async {
+    final AuthResponse res;
+    try {
+      res = await _db.auth
+          .verifyOTP(type: OtpType.sms, phone: phone, token: code)
+          .timeout(_timeout);
+    } catch (e) {
+      throw AccountError.from(e);
+    }
+    await _afterSignIn(res.user);
+  }
+
+  /// Step 1 of signing in by email: email the farmer a code. Creates the
+  /// account if this email is new.
   static Future<void> sendEmailCode(String email) async {
     try {
       await _db.auth.signInWithOtp(email: email).timeout(_timeout);
@@ -106,7 +167,7 @@ class Backend {
     }
   }
 
-  /// Step 2 of signing in: check the code from the email.
+  /// Step 2 of signing in by email: check the code from the email.
   static Future<void> verifyEmailCode(String email, String code) async {
     final AuthResponse res;
     try {
@@ -116,14 +177,18 @@ class Backend {
     } catch (e) {
       throw AccountError.from(e);
     }
+    await _afterSignIn(res.user);
+  }
+
+  static Future<void> _afterSignIn(User? user) async {
     // Records left on the phone by a different farmer (e.g. their session
     // was ended by the server) must not show up in, or upload to, this
     // account.
     final owner = await Storage.getDataOwner();
-    if (owner != null && owner != res.user?.id) {
+    if (owner != null && owner != user?.id) {
       await Storage.clearAccountData();
     }
-    if (res.user != null) await Storage.setDataOwner(res.user!.id);
+    if (user != null) await Storage.setDataOwner(user.id);
     // On a new phone, bring back the farmer's recent scans and season plan.
     try {
       await _restore().timeout(const Duration(seconds: 20));
@@ -149,6 +214,23 @@ class Backend {
       }
     }
     await Storage.clearAccountData();
+  }
+
+  /// Permanently delete the farmer's account and everything in it (photos,
+  /// scans, plan, profile, login), then clear it from this phone. Needs
+  /// internet. See supabase/functions/delete-account.
+  static Future<void> deleteAccount() async {
+    if (account == null) return;
+    try {
+      await _db.functions.invoke('delete-account').timeout(_timeout);
+    } on FunctionException catch (e) {
+      debugPrint('Account deletion failed: ${e.status} ${e.details}');
+      throw AccountError.failed;
+    } catch (e) {
+      throw AccountError.from(e);
+    }
+    // The login no longer exists, so this only clears the phone.
+    await signOut();
   }
 
   /// The farmer's name, from the server when online, else the cached copy.

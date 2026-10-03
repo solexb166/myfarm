@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
@@ -221,10 +222,20 @@ class Storage {
     }
   }
 
-  /// Remove the signed-in farmer's records from this phone (on sign-out).
+  /// Remove the signed-in farmer's records from this phone (on sign-out or
+  /// account deletion), including the copies of their scan photos.
   /// Language and downloaded treatment text are not personal, so they stay.
   static Future<void> clearAccountData() async {
     final p = await SharedPreferences.getInstance();
+    for (final d in await getHistory()) {
+      if (d.imagePath == null) continue;
+      try {
+        final f = File(d.imagePath!);
+        if (await f.exists()) await f.delete();
+      } catch (_) {
+        // Not ours to delete, or already gone.
+      }
+    }
     for (final k in [
       _kHistory,
       _kPlan,

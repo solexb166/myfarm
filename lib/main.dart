@@ -1,27 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'theme/app_theme.dart';
-import 'screens/app_gate.dart';
-import 'services/backend.dart';
-import 'services/storage.dart';
-import 'services/treatment_db.dart';
+import 'screens/startup_screen.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
-  // Use the last treatment text downloaded from the backend, if any.
-  TreatmentDB.setOverrides(await Storage.getTreatmentOverrides());
-  await Backend.init();
-  runApp(MyFarmApp(lang: await Storage.getLang()));
-  Backend.sync();
+  // Startup work (settings, backend) happens behind the opening animation.
+  runApp(const MyFarmApp());
 }
 
 class MyFarmApp extends StatelessWidget {
-  final String lang;
-  const MyFarmApp({super.key, required this.lang});
+  const MyFarmApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +22,7 @@ class MyFarmApp extends StatelessWidget {
       title: 'MY FARM',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: AppGate(initialLang: lang),
+      home: const StartupScreen(),
     );
   }
 }

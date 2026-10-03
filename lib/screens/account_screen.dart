@@ -187,8 +187,22 @@ class _AccountScreenState extends State<AccountScreen> {
           TopBar(title: t.get('account')),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
               child: _buildAccount(account?.email ?? ''),
+            ),
+          ),
+          // Sign out stays at the bottom of the screen, apart from the
+          // settings above it.
+          Container(
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppColors.border)),
+            ),
+            child: _OutlineButton(
+              icon: Icons.logout,
+              label: t.get('signOut'),
+              color: AppColors.rust,
+              onTap: _busy || _syncing ? null : _signOut,
             ),
           ),
         ]),
@@ -303,13 +317,6 @@ class _AccountScreenState extends State<AccountScreen> {
         const SizedBox(height: 26),
         FieldLabel(t.get('location')),
         _locationCard(),
-        const SizedBox(height: 32),
-        _OutlineButton(
-          icon: Icons.logout,
-          label: t.get('signOut'),
-          color: AppColors.rust,
-          onTap: _busy || _syncing ? null : _signOut,
-        ),
       ],
     );
   }

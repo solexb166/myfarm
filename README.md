@@ -100,6 +100,7 @@ lib/
     diagnose_screen.dart          crop pick → photo → on-device result
     calendar_screen.dart          setup → season timeline
     history_screen.dart           saved past diagnoses
+    startup_screen.dart           animated logo while the app starts up
     app_gate.dart                 sign in first, then home; saves language
     main_shell.dart               bottom tabs: Home, Calendar, Scans, Account
     sign_in_screen.dart           email code sign-in

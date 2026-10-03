@@ -27,9 +27,10 @@ date. Calendar and scan history are stored on the device.
 
 When built with Supabase settings, the app also backs up scans (with photos)
 and the crop plan, and downloads updated treatment text whenever it is online.
-Farmers sign in once with their email (a 6-digit code, no password), which
-needs internet. After that the app works offline, and their records follow
-them to a new phone.
+Farmers sign in once with their phone number (a 6-digit code by SMS) or
+email, with no password; this needs internet. After that the app works
+offline, and their records follow them to a new phone. Signed-in farmers
+also see which diseases farmers in their district are finding.
 It still works fully offline without them. Setup, schema and how to edit
 treatments are described in [`supabase/README.md`](supabase/README.md).
 
@@ -94,6 +95,7 @@ lib/
     backend.dart                  optional Supabase sync
     areas.dart                    bundled Uganda districts + sub-counties, GPS lookup
     location.dart                 location consent + where a scan was made
+    links.dart                    privacy policy / deletion page links
     l10n.dart                     English + Luganda strings
   screens/
     home_screen.dart
@@ -103,12 +105,16 @@ lib/
     startup_screen.dart           animated logo while the app starts up
     app_gate.dart                 sign in first, then home; saves language
     main_shell.dart               bottom tabs: Home, Calendar, Scans, Account
-    sign_in_screen.dart           email code sign-in
-    account_screen.dart           name, backup status, location, sign out
+    sign_in_screen.dart           phone (SMS) or email code sign-in
+    account_screen.dart           name, backup, location, privacy, delete account, sign out
+    area_screen.dart              diseases near you (district totals + advice)
     location_screens.dart         location consent + district / sub-county picker
   widgets/common.dart
 assets/models/                    put trained .tflite + labels here
 supabase/migrations/              backend database schema + treatment seed
+supabase/functions/               SMS sign-in hook (Africa's Talking), account deletion
+docs/                             privacy policy + account deletion pages (GitHub Pages)
+store/                            Google Play listing, graphics, forms and release steps
 tool/export_treatments.py         regenerates the treatment seed from Dart
 tool/build_areas.py               builds assets/areas + the districts migration
 assets/areas/                     Uganda districts + sub-counties (generated)
@@ -131,6 +137,12 @@ flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KE
 > add `NSLocationWhenInUseUsageDescription` to `ios/Runner/Info.plist`, e.g.
 > "MY FARM records the district where you scan a crop, if you agree." (Android
 > needs nothing extra: the permission is already in the manifest.)
+
+## Releasing on Google Play
+
+See [`store/README.md`](store/README.md): Supabase production setup, the
+privacy pages, the upload key, the `play-release` Codemagic workflow, the
+Play Console forms and the 14-day closed test.
 
 ## Notes
 

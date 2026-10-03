@@ -20,7 +20,7 @@ class Diagnosis {
   final String? districtId;
   final String? subcounty;
   final String? locationSource; // 'gps' | 'manual'
-  final double? lat; // rounded to 2 decimals (about 1 km)
+  final double? lat; // on a 0.02 degree grid (about 2 km)
   final double? lng;
 
   Diagnosis({

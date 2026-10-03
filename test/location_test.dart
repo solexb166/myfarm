@@ -51,10 +51,12 @@ void main() {
     expect((await Areas.districtAt(0.4044, 32.4594))?.name, 'Wakiso');
   });
 
-  test('coordinates are rounded to about 1 km', () {
-    expect(LocationService.round2(1.082734), 1.08);
-    expect(LocationService.round2(34.175012), 34.18);
-    expect(LocationService.round2(-0.607249), -0.61);
+  test('coordinates are snapped to a grid of about 2 km', () {
+    expect(LocationService.coarse(1.082734), 1.08);
+    expect(LocationService.coarse(34.175012), 34.18);
+    expect(LocationService.coarse(34.189), 34.18);
+    expect(LocationService.coarse(0.371), 0.38);
+    expect(LocationService.coarse(-0.607249), -0.6);
   });
 
   test('location choice is saved, marked for upload, cleared on sign-out',

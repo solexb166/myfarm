@@ -18,7 +18,7 @@ class ScanPlace {
   final String districtId;
   final String? subcounty;
   final String source; // 'gps' | 'manual'
-  final double? lat; // rounded to 2 decimals (about 1 km)
+  final double? lat; // on a 0.02 degree grid (about 2 km)
   final double? lng;
   const ScanPlace({
     required this.districtId,
@@ -32,9 +32,11 @@ class ScanPlace {
 /// Location for scans, only ever with the farmer's consent ([LocationMode]).
 /// Never blocks a diagnosis: if GPS is off or slow, the home area is used.
 class LocationService {
-  /// Rounds a coordinate to 2 decimal places, about 1 km. Precise positions
-  /// are never stored or uploaded.
-  static double round2(double v) => (v * 100).round() / 100;
+  /// Snaps a coordinate to a 0.02 degree grid (about 2.2 km, so each grid
+  /// square is about 5 km2). Precise positions are never stored or
+  /// uploaded, and this counts as "approximate location" for Google Play
+  /// (3 km2 or more).
+  static double coarse(double v) => ((v * 50).round() * 2) / 100;
 
   /// Asks Android/iOS for location permission (after our own consent
   /// screen). Returns true if the app may use location.
@@ -74,8 +76,8 @@ class LocationService {
             districtId: d.id,
             subcounty: d.subcountyAt(p.latitude, p.longitude),
             source: 'gps',
-            lat: round2(p.latitude),
-            lng: round2(p.longitude),
+            lat: coarse(p.latitude),
+            lng: coarse(p.longitude),
           );
         }
       }

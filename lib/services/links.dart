@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Web pages the app links to. They live in docs/ and are published with
-/// GitHub Pages (see docs/README.md). Override at build time with
+/// GitHub Pages (see store/README.md). Override at build time with
 /// --dart-define=WEB_BASE_URL=https://example.org/myfarm if hosted elsewhere.
 class Links {
   static const _base = String.fromEnvironment('WEB_BASE_URL',

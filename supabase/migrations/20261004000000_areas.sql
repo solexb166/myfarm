@@ -155,7 +155,7 @@ insert into public.districts (id, name) values
   ('zombo', 'Zombo')
 on conflict (id) do update set name = excluded.name;
 
--- Where a scan was made. GPS is stored to 2 decimal places (about 1 km);
+-- Where a scan was made. The app sends GPS on a 0.02 degree grid (about 2 km);
 -- the column type rounds anything more precise.
 alter table public.scans
   add column district_id      text,

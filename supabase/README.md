@@ -15,13 +15,18 @@ Everything is saved on the phone first, and `lib/services/backend.dart` syncs
 in the background (on start-up and after every scan or plan change). If the
 phone is offline, it tries again next time.
 
+- **shows diseases near you**: totals of what farmers in a district found
+  (functions `area_diseases` and `area_farmers`)
+
 Row Level Security means each farmer can only read and write their own
 scans, plan, profile and photos. Treatments are read-only to the app.
 
-## Accounts (email sign-in)
+## Accounts (phone or email sign-in)
 
-The app opens on a sign-in screen. Farmers enter their email and type the
-6-digit code they receive; there is no password.
+The app opens on a sign-in screen. Farmers enter their **phone number**
+(the default) or **email** and type the 6-digit code they receive by SMS or
+email; there is no password. A phone account and an email account are
+separate accounts.
 
 - **Internet is needed once**, to sign in. The session is then kept on the
   phone, so the app opens straight to the home screen and diagnosis and the
@@ -35,6 +40,35 @@ The app opens on a sign-in screen. Farmers enter their email and type the
   wrong account.
 - **Builds without Supabase settings** have no accounts and open straight to
   the home screen, so diagnosis is never blocked by a missing backend.
+- **Deleting the account** (Account → Privacy → Delete account) calls the
+  `delete-account` function, which removes the farmer's photos and then the
+  login; scans, plan and profile are deleted with it. Google Play requires
+  this.
+
+## Phone sign-in (Africa's Talking)
+
+Supabase Auth creates the code; the **Send SMS hook**
+(`functions/send-sms`) texts it with [Africa's Talking](https://africastalking.com).
+Before sending, it checks:
+
+- the number is a **Ugandan mobile** (+2567…). This stops SMS fraud to
+  expensive foreign numbers. The app checks this too.
+- **limits**, through `sms_allow()` and the `sms_log` table: at most
+  `SMS_PER_HOUR` codes per number per hour (default 5) and `SMS_PER_DAY`
+  codes in total per day (default 500), so a bot can't run up your bill.
+  The log keeps the number and time for 7 days only.
+
+New farmers who chose Luganda get the code in Luganda.
+
+## Diseases near you
+
+`area_diseases(district, days)` returns, for one district over the last 90
+days, each disease found with the number of farmers who found it, and
+`area_farmers(district, days)` how many farmers scanned there. They return
+**totals only** and list a disease only once **3 or more farmers** found it,
+so a single farm can't be picked out. Healthy scans aren't listed. Only
+signed-in users can call them. The app keeps the last result for offline
+use.
 
 ## Location (where scans are made)
 
@@ -47,9 +81,11 @@ location permission.
 - **Works offline:** district and sub-county outlines are bundled in the app
   (`assets/areas/uganda_areas.json`), so the phone finds the area itself.
   If GPS is off or slow, the farmer's home area is used instead.
-- **About 1 km only:** with GPS, the phone uploads the district, the
-  sub-county and the position rounded to 2 decimal places. The `lat` / `lng`
-  columns (`numeric(5,2)`) round anything more precise.
+- **About 2 km only:** with GPS, the phone uploads the district, the
+  sub-county and the position snapped to a 0.02° grid (about 2.2 km, so
+  about 5 km² per square). Google Play counts 3 km² or more as
+  *approximate* location. The `lat` / `lng` columns (`numeric(5,2)`) also
+  round anything more precise to 2 decimals.
 - **Profile:** the choice and home area are saved in `profiles`
   (`location_consent`, `consent_at`, `home_district_id`, `home_subcounty`).
 - **New phone:** signing in on a phone with no scans downloads the farmer's
@@ -78,6 +114,9 @@ boundaries (e.g. the OCHA COD-AB for Uganda) and rerun the script.
 | `profiles` | One row per farmer: display name, location consent, home district and sub-county |
 | `districts` | Uganda's districts (`id` like `mbale`), the same list the app bundles |
 | `treatments` | `(label, lang)` → cause / organic / chemical / prevent. Seeded from `treatment_db.dart` |
+| `sms_log` | Sign-in SMS sent in the last 7 days, for the limits. Only the SMS hook can use it |
+| `area_diseases()`, `area_farmers()` | Diseases near you: totals per district, 3-farmer minimum |
+| `sms_allow()` | Counts an SMS against the limits; called by the SMS hook only |
 | `disease_counts` | View: scans per disease per week, for analysis in the dashboard |
 | `scan-photos` | Private storage bucket. Each user's photos are in a `<user id>/` folder |
 
@@ -87,8 +126,9 @@ boundaries (e.g. the OCHA COD-AB for Uganda) and rerun the script.
    enough to start).
 2. **Auth settings** (Authentication → Sign In / Providers):
    - Keep the **Email** provider on.
+   - Turn the **Phone** provider on. With the SMS hook (step 8) its SMS
+     provider settings aren't used, so leave them as they are.
    - Leave *Allow anonymous sign-ins* **off**. The app doesn't use them.
-   - Turning on CAPTCHA protection is a good idea before a public release.
 3. **Email code templates** (Authentication → Emails → Templates): edit both
    **Confirm signup** (sent to new emails) and **Magic Link** (sent to
    existing accounts) so they show the code, for example:
@@ -124,7 +164,35 @@ boundaries (e.g. the OCHA COD-AB for Uganda) and rerun the script.
    ```
 
    For Codemagic, add both values to an environment variable group called
-   `supabase` and uncomment `groups: - supabase` in `codemagic.yaml`.
+   `supabase` (the `play-release` workflow loads it; see `store/README.md`).
+8. **Phone sign-in.**
+   1. At Africa's Talking, create an account and an app, add credit, and
+      create an API key. Optionally request a sender ID (e.g. `MYFARM`);
+      in Uganda this needs registration and takes a while, and until then
+      messages come from a shared short code. To try it free first, use the
+      username `sandbox`: messages then only appear in their online
+      simulator.
+   2. Deploy the hook:
+      `npx supabase functions deploy send-sms --no-verify-jwt`
+      (Auth calls it with a signed request, not a user login.)
+   3. Authentication → Hooks → **Send SMS hook** → HTTPS, URL
+      `https://<ref>.supabase.co/functions/v1/send-sms`. Generate a secret.
+   4. Set the function's secrets (or under Edge Functions → Secrets):
+      ```bash
+      npx supabase secrets set \
+        SEND_SMS_HOOK_SECRET='v1,whsec_...' \
+        AT_USERNAME=your-app-username AT_API_KEY=your-key \
+        AT_SENDER_ID=MYFARM          # optional
+      # optional limits: SMS_PER_HOUR=5 SMS_PER_DAY=500
+      ```
+   5. Raise **Authentication → Rate Limits → SMS** to suit (it is a
+      project-wide hourly limit).
+9. **Account deletion:**
+   `npx supabase functions deploy delete-account --no-verify-jwt`
+   (it checks the farmer's login itself).
+
+Test the functions locally with
+`deno test supabase/functions/tests` (no Supabase or SMS needed).
 
 ## Editing treatment advice
 
@@ -153,12 +221,8 @@ select * from disease_counts order by week desc, scans desc;
 
 ## Privacy
 
-Scans, photos and the season plan are linked to the farmer's email account,
-and optionally a name they enter. Before a public release on Google Play you
-will need:
-
-- a privacy policy that says what is collected (email, name, crop photos,
-  diagnoses) and why, and
-- a way for farmers to delete their account and data, both in the app and
-  from a web page. Google Play requires this for apps that let people
-  create accounts.
+Scans, photos and the season plan are linked to the farmer's phone number or
+email, and optionally a name they enter. The privacy policy and the
+account-deletion page are in `docs/` (published with GitHub Pages), and the
+app links to them. If you change what is collected, update
+`docs/privacy.html` and `store/data-safety.md` too.

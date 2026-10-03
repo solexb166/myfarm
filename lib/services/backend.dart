@@ -222,6 +222,11 @@ class Backend {
   static Future<void> deleteAccount() async {
     if (account == null) return;
     try {
+      // After a long time offline the access token has expired, and the
+      // function would refuse it.
+      if (_db.auth.currentSession?.isExpired ?? false) {
+        await _db.auth.refreshSession().timeout(_timeout);
+      }
       await _db.functions.invoke('delete-account').timeout(_timeout);
     } on FunctionException catch (e) {
       debugPrint('Account deletion failed: ${e.status} ${e.details}');

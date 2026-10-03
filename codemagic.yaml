@@ -1,3 +1,109 @@
+# Two workflows share the same preparation steps (defined once below):
+#
+#   android-release  Builds a signed AAB + APK, and a debug APK for testing.
+#                    Works without any secrets (debug-signed, offline only).
+#   play-release     The Google Play build: stops if the upload key or the
+#                    Supabase settings are missing, and numbers each build
+#                    so Play accepts it. See store/README.md.
+definitions:
+  scripts:
+    - &regenerate_android
+      name: Regenerate Android platform files (fix v1 embedding)
+      script: flutter create --platforms=android .
+    - &set_app_id
+      name: Set application ID to com.afrotym.myfarm
+      script: |
+        BG="android/app/build.gradle.kts"
+        perl -i -pe 's/namespace = "com\.example\.my_farm"/namespace = "com.afrotym.myfarm"/' "$BG"
+        perl -i -pe 's/applicationId = "com\.example\.my_farm"/applicationId = "com.afrotym.myfarm"/' "$BG"
+        echo "=== namespace/applicationId lines ==="
+        grep -E "namespace|applicationId" "$BG"
+        # MainActivity.kt must live at a path matching the new package,
+        # and its `package` declaration must match too - otherwise Android
+        # can't find the launcher activity and the app crashes instantly
+        # on open (before Flutter even starts, so no error screen shows).
+        OLD_DIR="android/app/src/main/kotlin/com/example/my_farm"
+        NEW_DIR="android/app/src/main/kotlin/com/afrotym/myfarm"
+        if [ -f "$OLD_DIR/MainActivity.kt" ]; then
+          mkdir -p "$NEW_DIR"
+          mv "$OLD_DIR/MainActivity.kt" "$NEW_DIR/MainActivity.kt"
+          perl -i -pe 's/package com\.example\.my_farm/package com.afrotym.myfarm/' "$NEW_DIR/MainActivity.kt"
+          rm -rf "android/app/src/main/kotlin/com/example"
+          echo "=== MainActivity.kt moved and repackaged ==="
+          cat "$NEW_DIR/MainActivity.kt"
+        else
+          echo "WARNING: MainActivity.kt not found at expected old path: $OLD_DIR"
+          find android/app/src/main/kotlin -name "MainActivity.kt"
+        fi
+    - &pub_get
+      name: Get Flutter packages
+      script: flutter pub get
+    - &launcher_icon
+      name: Generate app launcher icon (leaf logo)
+      script: flutter pub run flutter_launcher_icons
+    - &patch_tflite
+      name: Patch tflite_flutter (JVM 17 + compileSdk 36)
+      script: |
+        PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
+        GF="$PLUGIN/android/build.gradle"
+        echo "Patching: $GF"
+        # JVM 17
+        perl -i -pe 's/JavaVersion\.VERSION_1_8/JavaVersion.VERSION_17/g' "$GF"
+        perl -0777 -i -pe 's/(compileOptions\s*\{[^}]*\})/$1\n    kotlinOptions {\n        jvmTarget = "17"\n    }/s unless /kotlinOptions/' "$GF"
+        # Bump the plugin compileSdkVersion 31 -> 36 (deps require >=33)
+        perl -i -pe 's/compileSdkVersion\s+31/compileSdkVersion 36/g' "$GF"
+        # Bump the bundled TensorFlow Lite runtime so it understands ops from
+        # newer TF (our Colab-exported EfficientNet models). 2.11 is too old.
+        # Bump bundled TensorFlow Lite native runtime to match the TF version
+        # used to train/export the models in Colab (fixes "Unable to create
+        # interpreter" / "Didn't find op for builtin opcode" errors).
+        perl -i -pe 's/def tflite_version = "2\.11\.0"/def tflite_version = "2.16.1"/' "$GF"
+        echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
+    - &fix_tf_namespace
+      name: Fix TensorFlow namespace conflict
+      script: |
+        GP="android/gradle.properties"
+        {
+          echo ""
+          echo "android.uniquePackageNames=false"
+          echo "android.nonTransitiveRClass=false"
+        } >> "$GP"
+        echo "=== gradle.properties ==="; cat "$GP"
+    - &disable_r8
+      name: Disable R8 minification
+      script: |
+        BG="android/app/build.gradle.kts"
+        perl -0777 -i -pe 's/(release\s*\{)/$1\n            isMinifyEnabled = false\n            isShrinkResources = false/s unless /isMinifyEnabled/' "$BG"
+        echo "=== release block ==="; grep -A6 "release {" "$BG"
+    - &signing_key
+      name: Set up release signing key
+      script: |
+        # Decode the keystore from a Codemagic secure environment variable
+        # (set CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
+        # in Codemagic > App settings > Environment variables > group "release")
+        if [ -n "$CM_KEYSTORE" ]; then
+          echo "$CM_KEYSTORE" | base64 --decode > android/app/release.keystore
+          cat > android/key.properties <<PROPS
+        storePassword=$CM_KEYSTORE_PASSWORD
+        keyPassword=$CM_KEY_PASSWORD
+        keyAlias=$CM_KEY_ALIAS
+        storeFile=release.keystore
+        PROPS
+          echo "Release keystore configured."
+        else
+          echo "No CM_KEYSTORE set - building with debug signing (Play Store will reject this)."
+        fi
+    - &wire_signing
+      name: Wire signing config into build.gradle.kts
+      script: |
+        BG="android/app/build.gradle.kts"
+        if [ -f android/key.properties ] && ! grep -q "keystoreProperties" "$BG"; then
+          perl -0777 -i -pe 's/(plugins \{)/import java.util.Properties\nimport java.io.FileInputStream\n\nval keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\n\n$1/s' "$BG"
+          perl -0777 -i -pe 's/(buildTypes \{)/signingConfigs {\n        create("release") {\n            keyAlias = keystoreProperties["keyAlias"] as String?\n            keyPassword = keystoreProperties["keyPassword"] as String?\n            storeFile = keystoreProperties["storeFile"]?.let { file(it) }\n            storePassword = keystoreProperties["storePassword"] as String?\n        }\n    }\n    $1/s' "$BG"
+          perl -i -pe 's/signingConfig = signingConfigs.getByName\("debug"\)/signingConfig = signingConfigs.getByName("release")/' "$BG"
+          echo "=== signing wired in ==="; cat "$BG"
+        fi
+
 workflows:
   android-release:
     name: MY FARM Android Release
@@ -11,93 +117,15 @@ workflows:
       # groups:
       #   - supabase
     scripts:
-      - name: Regenerate Android platform files (fix v1 embedding)
-        script: flutter create --platforms=android .
-      - name: Set application ID to com.afrotym.myfarm
-        script: |
-          BG="android/app/build.gradle.kts"
-          perl -i -pe 's/namespace = "com\.example\.my_farm"/namespace = "com.afrotym.myfarm"/' "$BG"
-          perl -i -pe 's/applicationId = "com\.example\.my_farm"/applicationId = "com.afrotym.myfarm"/' "$BG"
-          echo "=== namespace/applicationId lines ==="
-          grep -E "namespace|applicationId" "$BG"
-          # MainActivity.kt must live at a path matching the new package,
-          # and its `package` declaration must match too - otherwise Android
-          # can't find the launcher activity and the app crashes instantly
-          # on open (before Flutter even starts, so no error screen shows).
-          OLD_DIR="android/app/src/main/kotlin/com/example/my_farm"
-          NEW_DIR="android/app/src/main/kotlin/com/afrotym/myfarm"
-          if [ -f "$OLD_DIR/MainActivity.kt" ]; then
-            mkdir -p "$NEW_DIR"
-            mv "$OLD_DIR/MainActivity.kt" "$NEW_DIR/MainActivity.kt"
-            perl -i -pe 's/package com\.example\.my_farm/package com.afrotym.myfarm/' "$NEW_DIR/MainActivity.kt"
-            rm -rf "android/app/src/main/kotlin/com/example"
-            echo "=== MainActivity.kt moved and repackaged ==="
-            cat "$NEW_DIR/MainActivity.kt"
-          else
-            echo "WARNING: MainActivity.kt not found at expected old path: $OLD_DIR"
-            find android/app/src/main/kotlin -name "MainActivity.kt"
-          fi
-      - name: Get Flutter packages
-        script: flutter pub get
-      - name: Generate app launcher icon (leaf logo)
-        script: flutter pub run flutter_launcher_icons
-      - name: Patch tflite_flutter (JVM 17 + compileSdk 36)
-        script: |
-          PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
-          GF="$PLUGIN/android/build.gradle"
-          echo "Patching: $GF"
-          # JVM 17
-          perl -i -pe 's/JavaVersion\.VERSION_1_8/JavaVersion.VERSION_17/g' "$GF"
-          perl -0777 -i -pe 's/(compileOptions\s*\{[^}]*\})/$1\n    kotlinOptions {\n        jvmTarget = "17"\n    }/s unless /kotlinOptions/' "$GF"
-          # Bump the plugin compileSdkVersion 31 -> 36 (deps require >=33)
-          perl -i -pe 's/compileSdkVersion\s+31/compileSdkVersion 36/g' "$GF"
-          # Bump the bundled TensorFlow Lite runtime so it understands ops from
-          # newer TF (our Colab-exported EfficientNet models). 2.11 is too old.
-          # Bump bundled TensorFlow Lite native runtime to match the TF version
-          # used to train/export the models in Colab (fixes "Unable to create
-          # interpreter" / "Didn't find op for builtin opcode" errors).
-          perl -i -pe 's/def tflite_version = "2\.11\.0"/def tflite_version = "2.16.1"/' "$GF"
-          echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
-      - name: Fix TensorFlow namespace conflict
-        script: |
-          GP="android/gradle.properties"
-          {
-            echo ""
-            echo "android.uniquePackageNames=false"
-            echo "android.nonTransitiveRClass=false"
-          } >> "$GP"
-          echo "=== gradle.properties ==="; cat "$GP"
-      - name: Disable R8 minification
-        script: |
-          BG="android/app/build.gradle.kts"
-          perl -0777 -i -pe 's/(release\s*\{)/$1\n            isMinifyEnabled = false\n            isShrinkResources = false/s unless /isMinifyEnabled/' "$BG"
-          echo "=== release block ==="; grep -A6 "release {" "$BG"
-      - name: Set up release signing key
-        script: |
-          # Decode the keystore from a Codemagic secure environment variable
-          # (set CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
-          # in Codemagic > App settings > Environment variables > group "release")
-          if [ -n "$CM_KEYSTORE" ]; then
-            echo "$CM_KEYSTORE" | base64 --decode > android/app/release.keystore
-            cat > android/key.properties <<PROPS
-          storePassword=$CM_KEYSTORE_PASSWORD
-          keyPassword=$CM_KEY_PASSWORD
-          keyAlias=$CM_KEY_ALIAS
-          storeFile=release.keystore
-          PROPS
-            echo "Release keystore configured."
-          else
-            echo "No CM_KEYSTORE set - building with debug signing (Play Store will reject this)."
-          fi
-      - name: Wire signing config into build.gradle.kts
-        script: |
-          BG="android/app/build.gradle.kts"
-          if [ -f android/key.properties ] && ! grep -q "keystoreProperties" "$BG"; then
-            perl -0777 -i -pe 's/(plugins \{)/import java.util.Properties\nimport java.io.FileInputStream\n\nval keystoreProperties = Properties()\nval keystorePropertiesFile = rootProject.file("key.properties")\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(FileInputStream(keystorePropertiesFile))\n}\n\n$1/s' "$BG"
-            perl -0777 -i -pe 's/(buildTypes \{)/signingConfigs {\n        create("release") {\n            keyAlias = keystoreProperties["keyAlias"] as String?\n            keyPassword = keystoreProperties["keyPassword"] as String?\n            storeFile = keystoreProperties["storeFile"]?.let { file(it) }\n            storePassword = keystoreProperties["storePassword"] as String?\n        }\n    }\n    $1/s' "$BG"
-            perl -i -pe 's/signingConfig = signingConfigs.getByName\("debug"\)/signingConfig = signingConfigs.getByName("release")/' "$BG"
-            echo "=== signing wired in ==="; cat "$BG"
-          fi
+      - *regenerate_android
+      - *set_app_id
+      - *pub_get
+      - *launcher_icon
+      - *patch_tflite
+      - *fix_tf_namespace
+      - *disable_r8
+      - *signing_key
+      - *wire_signing
       - name: Build Android App Bundle (for Play Store)
         script: |
           flutter build appbundle --release \
@@ -116,3 +144,67 @@ workflows:
     artifacts:
       - build/**/outputs/**/*.aab
       - build/**/outputs/**/*.apk
+
+  play-release:
+    name: MY FARM Google Play Release
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      java: 17
+      # Both groups are required (Codemagic > App settings > Environment
+      # variables):
+      #   release   CM_KEYSTORE (base64 of the .jks), CM_KEYSTORE_PASSWORD,
+      #             CM_KEY_ALIAS, CM_KEY_PASSWORD
+      #   supabase  SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
+      groups:
+        - release
+        - supabase
+    scripts:
+      - name: Check release settings
+        script: |
+          missing=""
+          for v in CM_KEYSTORE CM_KEYSTORE_PASSWORD CM_KEY_ALIAS CM_KEY_PASSWORD SUPABASE_URL SUPABASE_PUBLISHABLE_KEY; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing environment variables:$missing"
+            echo "Add them to the 'release' and 'supabase' groups. See store/README.md."
+            exit 1
+          fi
+      - *regenerate_android
+      - *set_app_id
+      - *pub_get
+      - *launcher_icon
+      - *patch_tflite
+      - *fix_tf_namespace
+      - *disable_r8
+      - *signing_key
+      - *wire_signing
+      - name: Check signing and target SDK
+        script: |
+          BG="android/app/build.gradle.kts"
+          grep -q 'signingConfigs.getByName("release")' "$BG" || { echo "Release signing is not wired in"; exit 1; }
+          # Google Play only accepts recent target SDKs (35+ in 2025-26).
+          FE="$(dirname "$(dirname "$(which flutter)")")/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
+          TARGET=$(grep -oE "val targetSdkVersion: Int = [0-9]+" "$FE" | grep -oE "[0-9]+$")
+          echo "targetSdk = $TARGET"
+          [ "${TARGET:-0}" -ge 35 ] || { echo "targetSdk $TARGET is too old for Google Play"; exit 1; }
+      - name: Build Android App Bundle for Google Play
+        script: |
+          # versionCode must go up with every upload; Codemagic's build
+          # counter does that. versionName comes from pubspec.yaml.
+          flutter build appbundle --release \
+            --build-number=$((100 + PROJECT_BUILD_NUMBER)) \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+    artifacts:
+      - build/**/outputs/**/*.aab
+    # Upload straight to Play's internal testing track. Needs a Google Cloud
+    # service account with access in Play Console, saved as
+    # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS in a group named google_play (add
+    # it to groups above), and the first version uploaded by hand.
+    # publishing:
+    #   google_play:
+    #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+    #     track: internal
+    #     submit_as_draft: true

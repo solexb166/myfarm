@@ -36,8 +36,28 @@ class CalendarService {
       crop: cropName,
       summary: summary,
       plantedDate: _fmt(planted),
+      region: region,
       tasks: tasks,
     );
+  }
+
+  /// Names farmers might type for each crop with a template (English and
+  /// Luganda). Anything else gets the generic plan.
+  static const Map<String, List<String>> _names = {
+    'cassava': ['cassava', 'muwogo'],
+    'maize': ['maize', 'corn', 'kasooli'],
+    'tomato': ['tomato', 'nyaanya'],
+    'beans': ['bean', 'beans', 'bijanjaalo', 'bijanjalo'],
+    'matooke': ['matooke', 'banana', 'bananas', 'gonja', 'kitooke', 'ebitooke'],
+  };
+
+  /// Template key for a typed crop name, or 'generic'.
+  static String cropKeyFor(String typed) {
+    final lower = typed.toLowerCase();
+    for (final e in _names.entries) {
+      if (e.value.any(lower.contains)) return e.key;
+    }
+    return 'generic';
   }
 
   static String _fmt(DateTime d) =>
@@ -145,6 +165,33 @@ class CalendarService {
           'Harvest readiness', 'Okukungula',
           'Harvest when pods dry and rattle, about 3 months.',
           'Kungula ng\u2019ebijanjaalo byomye, nga myezi 3.'),
+    ],
+    // Simplified from common NARO/MAAIF banana guidance; review before release.
+    'matooke': [
+      _Task(0, 'weeding', 'Planting', 'Olusimbi',
+          'Plant clean suckers', 'Simba endokwa ennongoofu',
+          'Plant clean, pared suckers in holes about 60 cm wide and deep, mixed with manure.',
+          'Simba endokwa ennongoofu mu binnya bya sentimita nga 60, ng\u2019otaddemu obusa.'),
+      _Task(30, 'weeding', 'Establishment', 'Okunywera',
+          'Weed and mulch', 'Kuula era oteeke ebisaaniko',
+          'Keep the garden weed-free and mulch around plants to hold moisture.',
+          'Kuuma ennimiro nga temuli muddo era oteeke ebisaaniko okukuuma obunnyogovu.'),
+      _Task(90, 'fertilizer', 'Vegetative', 'Okukula',
+          'Add manure', 'Teekamu obusa',
+          'Apply well-rotted manure or compost around each mat.',
+          'Teeka obusa obuvunze oba nnakavundira okwetooloola buli kikolo.'),
+      _Task(150, 'scout', 'Vegetative', 'Okukula',
+          'Desucker and check for disease', 'Ggyamu endokwa era okebere obulwadde',
+          'Keep about 3 plants per mat. Look for yellowing, wilting leaves (Fusarium wilt) and dark streaks on leaves (black Sigatoka).',
+          'Leka ebimera nga 3 buli kikolo. Kebera amakoola agafuuka kyenvu oba agawotoka, n\u2019obubonero obuddugavu ku makoola.'),
+      _Task(300, 'scout', 'Flowering', 'Okumulisa',
+          'Remove the male bud', 'Ggyako empumumpu',
+          'After the last hand forms, break off the male bud with a forked stick to help stop banana bacterial wilt spreading.',
+          'Oluvannyuma lw\u2019ekiwagu ekisembayo, menya empumumpu ng\u2019okozesa omuggo ogw\u2019enkonda okuziyiza kiwotokwa.'),
+      _Task(420, 'harvest', 'Maturity', 'Okuyengera',
+          'Harvest readiness', 'Okukungula',
+          'Bunches are usually ready 12 to 15 months after planting, when the fingers are full and rounded.',
+          'Enkota zeetegeka oluvannyuma lw\u2019emyezi 12 okutuuka ku 15, ng\u2019ebitooke bijjudde.'),
     ],
   };
 

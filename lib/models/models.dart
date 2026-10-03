@@ -1,8 +1,9 @@
 /// Plain data models. All JSON-serialisable so they can be cached to disk
-/// (shared_preferences) and work offline once fetched.
+/// (shared_preferences) and synced to the backend when online.
 
 class Diagnosis {
   final String crop;
+  final String? label; // raw model class, e.g. 'cassava_mosaic_disease'
   final String diagnosis;
   final int confidence;
   final bool healthy;
@@ -11,11 +12,20 @@ class Diagnosis {
   final String chemical;
   final String prevent;
   final String spoken;
+  final String lang; // language the advice was given in: 'en' | 'lg'
   final String? imagePath; // local file path of the photo
   final int timestamp;
+  final bool synced; // uploaded to the backend yet?
+  // Where the scan was made (only with the farmer's consent).
+  final String? districtId;
+  final String? subcounty;
+  final String? locationSource; // 'gps' | 'manual'
+  final double? lat; // on a 0.02 degree grid (about 2 km)
+  final double? lng;
 
   Diagnosis({
     required this.crop,
+    this.label,
     required this.diagnosis,
     required this.confidence,
     required this.healthy,
@@ -24,12 +34,20 @@ class Diagnosis {
     required this.chemical,
     required this.prevent,
     required this.spoken,
+    this.lang = 'en',
     this.imagePath,
     int? timestamp,
+    this.synced = false,
+    this.districtId,
+    this.subcounty,
+    this.locationSource,
+    this.lat,
+    this.lng,
   }) : timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   factory Diagnosis.fromJson(Map<String, dynamic> j) => Diagnosis(
         crop: (j['crop'] ?? '').toString(),
+        label: j['label']?.toString(),
         diagnosis: (j['diagnosis'] ?? 'Unknown').toString(),
         confidence: _toInt(j['confidence']),
         healthy: j['healthy'] == true,
@@ -38,12 +56,20 @@ class Diagnosis {
         chemical: (j['chemical'] ?? '').toString(),
         prevent: (j['prevent'] ?? '').toString(),
         spoken: (j['spoken'] ?? '').toString(),
+        lang: (j['lang'] ?? 'en').toString(),
         imagePath: j['imagePath']?.toString(),
         timestamp: j['timestamp'] is int ? j['timestamp'] : null,
+        synced: j['synced'] == true,
+        districtId: j['districtId']?.toString(),
+        subcounty: j['subcounty']?.toString(),
+        locationSource: j['locationSource']?.toString(),
+        lat: (j['lat'] as num?)?.toDouble(),
+        lng: (j['lng'] as num?)?.toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
         'crop': crop,
+        'label': label,
         'diagnosis': diagnosis,
         'confidence': confidence,
         'healthy': healthy,
@@ -52,12 +78,29 @@ class Diagnosis {
         'chemical': chemical,
         'prevent': prevent,
         'spoken': spoken,
+        'lang': lang,
         'imagePath': imagePath,
         'timestamp': timestamp,
+        'synced': synced,
+        'districtId': districtId,
+        'subcounty': subcounty,
+        'locationSource': locationSource,
+        'lat': lat,
+        'lng': lng,
       };
 
-  Diagnosis copyWith({String? imagePath}) => Diagnosis(
+  Diagnosis copyWith({
+    String? imagePath,
+    bool? synced,
+    String? districtId,
+    String? subcounty,
+    String? locationSource,
+    double? lat,
+    double? lng,
+  }) =>
+      Diagnosis(
         crop: crop,
+        label: label,
         diagnosis: diagnosis,
         confidence: confidence,
         healthy: healthy,
@@ -66,8 +109,15 @@ class Diagnosis {
         chemical: chemical,
         prevent: prevent,
         spoken: spoken,
+        lang: lang,
         imagePath: imagePath ?? this.imagePath,
         timestamp: timestamp,
+        synced: synced ?? this.synced,
+        districtId: districtId ?? this.districtId,
+        subcounty: subcounty ?? this.subcounty,
+        locationSource: locationSource ?? this.locationSource,
+        lat: lat ?? this.lat,
+        lng: lng ?? this.lng,
       );
 }
 
@@ -111,12 +161,14 @@ class CropPlan {
   final String crop;
   final String summary;
   final String plantedDate;
+  final String region;
   final List<CropTask> tasks;
 
   CropPlan({
     required this.crop,
     required this.summary,
     required this.plantedDate,
+    this.region = '',
     required this.tasks,
   });
 
@@ -124,6 +176,7 @@ class CropPlan {
         crop: (j['crop'] ?? '').toString(),
         summary: (j['summary'] ?? '').toString(),
         plantedDate: (j['plantedDate'] ?? '').toString(),
+        region: (j['region'] ?? '').toString(),
         tasks: ((j['tasks'] ?? []) as List)
             .map((e) => CropTask.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -133,6 +186,7 @@ class CropPlan {
         'crop': crop,
         'summary': summary,
         'plantedDate': plantedDate,
+        'region': region,
         'tasks': tasks.map((t) => t.toJson()).toList(),
       };
 }
@@ -142,4 +196,74 @@ int _toInt(dynamic v) {
   if (v is double) return v.round();
   if (v is String) return int.tryParse(v) ?? 0;
   return 0;
+}
+
+/// A disease farmers are finding in a district (from area_diseases on the
+/// server: totals only, and only once 3 or more farmers found it).
+class AreaDisease {
+  final String crop; // 'Cassava'
+  final String label; // model class, e.g. 'cassava_mosaic_disease'
+  final int farmers;
+  final int scans;
+  final String lastSeen; // yyyy-MM-dd
+
+  const AreaDisease({
+    required this.crop,
+    required this.label,
+    required this.farmers,
+    required this.scans,
+    required this.lastSeen,
+  });
+
+  factory AreaDisease.fromJson(Map<String, dynamic> j) => AreaDisease(
+        crop: (j['crop'] ?? '').toString(),
+        label: (j['label'] ?? '').toString(),
+        farmers: _toInt(j['farmers']),
+        scans: _toInt(j['scans']),
+        lastSeen: (j['last_seen'] ?? '').toString(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'crop': crop,
+        'label': label,
+        'farmers': farmers,
+        'scans': scans,
+        'last_seen': lastSeen,
+      };
+}
+
+/// What farmers in one district found recently, as last downloaded. Kept on
+/// the phone so it can be shown offline.
+class AreaReport {
+  final String districtId;
+  final int days;
+  final int farmers; // farmers who scanned there; 0 if fewer than 3
+  final List<AreaDisease> diseases;
+  final int fetchedAt; // ms since epoch
+
+  const AreaReport({
+    required this.districtId,
+    required this.days,
+    required this.farmers,
+    required this.diseases,
+    required this.fetchedAt,
+  });
+
+  factory AreaReport.fromJson(Map<String, dynamic> j) => AreaReport(
+        districtId: (j['districtId'] ?? '').toString(),
+        days: _toInt(j['days']),
+        farmers: _toInt(j['farmers']),
+        diseases: ((j['diseases'] ?? []) as List)
+            .map((e) => AreaDisease.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        fetchedAt: _toInt(j['fetchedAt']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'districtId': districtId,
+        'days': days,
+        'farmers': farmers,
+        'diseases': diseases.map((d) => d.toJson()).toList(),
+        'fetchedAt': fetchedAt,
+      };
 }

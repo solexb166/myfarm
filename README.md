@@ -11,7 +11,8 @@ The app bundles a small **TensorFlow Lite** model per crop, trained on real
 crop-disease images (see the `myfarm_ml` training pipeline). When a farmer
 photographs a leaf:
 
-1. They pick the crop (cassava, maize, tomato, beans).
+1. They pick the crop. Cassava, beans and matooke have bundled models; maize
+   shows as "coming soon" until its model is added.
 2. The photo is classified **on the device** by that crop's `.tflite` model — no
    internet needed.
 3. The predicted disease is matched to a bundled **treatment knowledge base**
@@ -21,6 +22,17 @@ photographs a leaf:
 The crop calendar is also fully offline: it is generated from per-crop
 growth-stage templates (`lib/services/calendar_service.dart`) and the planting
 date. Calendar and scan history are stored on the device.
+
+## Optional backend (Supabase)
+
+When built with Supabase settings, the app also backs up scans (with photos)
+and the crop plan, and downloads updated treatment text whenever it is online.
+Farmers sign in once with their phone number (a 6-digit code by SMS) or
+email, with no password; this needs internet. After that the app works
+offline, and their records follow them to a new phone. Signed-in farmers
+also see which diseases farmers in their district are finding.
+It still works fully offline without them. Setup, schema and how to edit
+treatments are described in [`supabase/README.md`](supabase/README.md).
 
 ## Training the models
 
@@ -73,21 +85,39 @@ disabled — so the app ships fine with only cassava trained.
 ```
 lib/
   main.dart
-  theme/app_theme.dart            colour system + fonts
+  theme/app_theme.dart            light colour system (contrast-checked) + fonts
   models/models.dart              Diagnosis, CropPlan, CropTask
   services/
     inference_service.dart        on-device TFLite classification
     treatment_db.dart             offline treatment knowledge base (EN + LG)
     calendar_service.dart         offline rule-based season planner
     storage.dart                  local cache (calendar + history)
+    backend.dart                  optional Supabase sync
+    areas.dart                    bundled Uganda districts + sub-counties, GPS lookup
+    location.dart                 location consent + where a scan was made
+    links.dart                    privacy policy / deletion page links
     l10n.dart                     English + Luganda strings
   screens/
     home_screen.dart
     diagnose_screen.dart          crop pick → photo → on-device result
     calendar_screen.dart          setup → season timeline
     history_screen.dart           saved past diagnoses
+    startup_screen.dart           animated logo while the app starts up
+    app_gate.dart                 sign in first, then home; saves language
+    main_shell.dart               bottom tabs: Home, Calendar, Scans, Account
+    sign_in_screen.dart           phone (SMS) or email code sign-in
+    account_screen.dart           name, backup, location, privacy, delete account, sign out
+    area_screen.dart              diseases near you (district totals + advice)
+    location_screens.dart         location consent + district / sub-county picker
   widgets/common.dart
 assets/models/                    put trained .tflite + labels here
+supabase/migrations/              backend database schema + treatment seed
+supabase/functions/               SMS sign-in hook (Africa's Talking), account deletion
+docs/                             privacy policy + account deletion pages (GitHub Pages)
+store/                            Google Play listing, graphics, forms and release steps
+tool/export_treatments.py         regenerates the treatment seed from Dart
+tool/build_areas.py               builds assets/areas + the districts migration
+assets/areas/                     Uganda districts + sub-counties (generated)
 ```
 
 ## Run it
@@ -96,17 +126,32 @@ assets/models/                    put trained .tflite + labels here
 flutter create .          # fills in native scaffolding around lib/
 flutter pub get
 flutter run
+# with the backend:
+flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=...
 ```
 
 > Note: TFLite generally does not run in the iOS simulator — test on a physical
 > device or an Android emulator.
 
+> **iOS builds** need a location usage description. After `flutter create`,
+> add `NSLocationWhenInUseUsageDescription` to `ios/Runner/Info.plist`, e.g.
+> "MY FARM records the district where you scan a crop, if you agree." (Android
+> needs nothing extra: the permission is already in the manifest.)
+
+## Releasing on Google Play
+
+See [`store/README.md`](store/README.md): Supabase production setup, the
+privacy pages, the upload key, the `play-release` Codemagic workflow, the
+Play Console forms and the 14-day closed test.
+
 ## Notes
 
 - **Treatment text** is curated for a student project. Have an agronomist review
   `treatment_db.dart` before any real-world release.
-- **Model quality** varies by crop: cassava and beans are trained on real field
-  photos; maize and tomato use lab images (PlantVillage) and may be less
-  accurate on real garden photos. See the training README.
+- **Model quality** varies by crop: check each crop's confusion matrix in
+  `assets/models/` and the per-class report from its notebook before release.
+- **Crop calendar** templates exist for cassava, maize, beans, matooke and
+  tomato; other crops get a generic plan. The matooke template is simplified
+  and, like the others, should be reviewed by an agronomist.
 - **Voice**: Luganda text is correct; spoken output falls back to the nearest
   available device voice (Swahili), as phones do not ship a Luganda TTS voice.

@@ -24,6 +24,27 @@ class Treatment {
 }
 
 class TreatmentDB {
+  /// Text downloaded from the backend's `treatments` table (cached on the
+  /// phone). Takes priority over the bundled [_db] so an agronomist can fix
+  /// treatment advice without shipping a new app version.
+  static Map<String, Map<String, Treatment>> _remote = {};
+
+  /// Replace the downloaded overrides with [rows] (treatments table rows).
+  static void setOverrides(List<Map<String, dynamic>> rows) {
+    final remote = <String, Map<String, Treatment>>{};
+    for (final r in rows) {
+      final label = r['label'], lang = r['lang'];
+      if (label is! String || lang is! String) continue;
+      remote.putIfAbsent(label, () => {})[lang] = Treatment(
+        cause: (r['cause'] ?? '').toString(),
+        organic: (r['organic'] ?? '').toString(),
+        chemical: (r['chemical'] ?? '').toString(),
+        prevent: (r['prevent'] ?? '').toString(),
+      );
+    }
+    _remote = remote;
+  }
+
   /// key = class label from <crop>_labels.txt ; value per language.
   static const Map<String, Map<String, Treatment>> _db = {
     // ----------------- CASSAVA -----------------
@@ -462,10 +483,11 @@ class TreatmentDB {
   /// Look up treatment for a label. Falls back to a generic message if a label
   /// has no entry yet (e.g. a newly added crop class).
   static Treatment lookup(String label, String lang) {
-    final byLang = _db[label];
-    if (byLang != null) {
-      return byLang[lang] ?? byLang['en']!;
-    }
+    final found = _remote[label]?[lang] ??
+        _db[label]?[lang] ??
+        _remote[label]?['en'] ??
+        _db[label]?['en'];
+    if (found != null) return found;
     return lang == 'lg'
         ? const Treatment(
             cause: 'Ekirwadde kizuuliddwa naye okunnyonnyola tekunnabaawo.',

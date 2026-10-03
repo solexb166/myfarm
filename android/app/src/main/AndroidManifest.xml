@@ -1,8 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- AI diagnosis needs the network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Approximate location (about 1 km) to record the district a scan was
+         made in. Only requested after the farmer agrees in the app. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- Camera for scanning crops (image_picker). Camera not required to install -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -32,6 +37,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- geolocator ships a background location service. MY FARM only
+             reads the location while open, so remove it: Play would
+             otherwise ask us to justify a location foreground service. -->
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
+            tools:node="remove" />
     </application>
 
     <!-- Required on Android 11+ so image_picker can resolve the camera/gallery -->
@@ -42,6 +54,11 @@
         <intent>
             <action android:name="android.intent.action.GET_CONTENT" />
             <data android:mimeType="image/*" />
+        </intent>
+        <!-- url_launcher: open the privacy policy in the browser -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
         </intent>
     </queries>
 </manifest>

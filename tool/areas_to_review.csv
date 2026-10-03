@@ -1,0 +1,101 @@
+# Sub-counties with no clear district in the source (largest overlap
+# below 60%). Mostly lake/island areas; check the rest with local
+# knowledge and add corrections to SUBCOUNTY_DISTRICT in build_areas.py.
+subcounty,assigned_district,overlap_share
+Magamaga,Abim,0.57
+Aroi,Arua,0.54
+Buwangani Town Council,Bududa,0.54
+Burere,Buhweju,0.52
+Nyabuhikye,Buhweju,0.43
+Ssi-Bukunja,Buikwe,0.58
+Najja,Buikwe,0.51
+Nyenga Division,Buikwe,0.59
+Bulegeni Town Council,Bulambuli,0.57
+Muyembe,Bulambuli,0.52
+Bumasobo,Bulambuli,0.49
+Pakanyi,Buliisa,0.59
+Karujubu Division,Buliisa,0.53
+Sindila,Bundibugyo,0.42
+Bubandi,Bundibugyo,0.24
+Kisubba,Bundibugyo,0.35
+Nyahuka Town Council,Bundibugyo,0.38
+Bundingoma,Bundibugyo,0
+Busunga Twon Council,Bundibugyo,0
+Kyabarungira,Bunyangabu,0.52
+Southern Division,Bunyangabu,0.55
+Mugiti,Butebo,0.45
+Buvuma Town Council,Buvuma,0.26
+Buwooya,Buvuma,0.37
+Bugaya,Buvuma,0.02
+Busamuzi,Buvuma,0.42
+Bweema,Buvuma,0.15
+Lwajje,Buvuma,0.01
+Lyabaana,Buvuma,0.0
+Nairambi,Buvuma,0.17
+Kicuzi,Ibanda,0.5
+Mwizi,Isingiro,0.49
+Central Division,Jinja,0.45
+Mpumudde Division,Jinja,0.38
+Karugutu,Kabarole,0.47
+Alwa,Kaberamaido,0.52
+Bujumba,Kalangala,0.43
+Kalangala Town Council,Kalangala,0.6
+Mugoye,Kalangala,0.31
+Bubeke,Kalangala,0.02
+Bufumira,Kalangala,0.16
+Kyamuswa,Kalangala,0.02
+Mazinga,Kalangala,0.02
+Nyanga,Kanungu,0.57
+Isango,Kasese,0.28
+Karambi,Kasese,0.21
+Kitholhu,Kasese,0.4
+Mpondwe-Lhubiriha,Kasese,0.54
+Muwanga,Kiboga,0.44
+Banda,Kiboga,0.54
+Kitura,Kiruhura,0.57
+Kijongo,Kitagwenda,0.53
+Kiriki,Kween,0.56
+Mulagi,Kyankwanzi,0.54
+Kifamba,Kyotera,0.54
+Kyebe,Kyotera,0.41
+Nangoma,Kyotera,0.54
+Ndagwe,Lwengo,0.59
+Mpumudde,Lyantonde,0.56
+Tara,Maracha,0.57
+Kyesiiga,Masaka,0.21
+Kyanamukaaka,Masaka,0.42
+Bukabooli,Mayuge,0.57
+Wairasa,Mayuge,0.35
+Jaguzi,Mayuge,0.01
+Bukatube,Mayuge,0.52
+Lubya,Mayuge,0
+Kinoni Town Council,Mbarara,0.55
+Kanyabwanga,Mitooma,0.55
+Nyabubare,Mitooma,0.59
+Bbanda,Mityana,0.56
+Buwama,Mpigi,0.54
+Nkozi,Mpigi,0.51
+Mpatta,Mukono,0.44
+Mpunge,Mukono,0.15
+Koome Island,Mukono,0.16
+Lolwe,Namayingo,0.01
+Buhemba,Namayingo,0.56
+Banda,Namayingo,0.56
+Sigulu Island,Namayingo,0.06
+Bukana,Namayingo,0.36
+Bubiita,Namisindwa,0.59
+Bunyinza Town Council,Namisindwa,0.58
+Nyakwae,Napak,0.59
+Ngoleriet,Napak,0.6
+Nebbi,Nebbi,0.59
+Itojo,Ntungamo,0.56
+Odek,Pader,0.5
+Butanda,Rubanda,0.49
+Kyabakara,Rubirzi,0.51
+Ibaare,Sheema,0.54
+Buyaga Town Council,Sironko,0.5
+Molo,Tororo,0.57
+Division A,Wakiso,0.52
+Division B,Wakiso,0.08
+Katabi Town Council,Wakiso,0.29
+Bussi,Wakiso,0.21

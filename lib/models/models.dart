@@ -197,3 +197,73 @@ int _toInt(dynamic v) {
   if (v is String) return int.tryParse(v) ?? 0;
   return 0;
 }
+
+/// A disease farmers are finding in a district (from area_diseases on the
+/// server: totals only, and only once 3 or more farmers found it).
+class AreaDisease {
+  final String crop; // 'Cassava'
+  final String label; // model class, e.g. 'cassava_mosaic_disease'
+  final int farmers;
+  final int scans;
+  final String lastSeen; // yyyy-MM-dd
+
+  const AreaDisease({
+    required this.crop,
+    required this.label,
+    required this.farmers,
+    required this.scans,
+    required this.lastSeen,
+  });
+
+  factory AreaDisease.fromJson(Map<String, dynamic> j) => AreaDisease(
+        crop: (j['crop'] ?? '').toString(),
+        label: (j['label'] ?? '').toString(),
+        farmers: _toInt(j['farmers']),
+        scans: _toInt(j['scans']),
+        lastSeen: (j['last_seen'] ?? '').toString(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'crop': crop,
+        'label': label,
+        'farmers': farmers,
+        'scans': scans,
+        'last_seen': lastSeen,
+      };
+}
+
+/// What farmers in one district found recently, as last downloaded. Kept on
+/// the phone so it can be shown offline.
+class AreaReport {
+  final String districtId;
+  final int days;
+  final int farmers; // farmers who scanned there; 0 if fewer than 3
+  final List<AreaDisease> diseases;
+  final int fetchedAt; // ms since epoch
+
+  const AreaReport({
+    required this.districtId,
+    required this.days,
+    required this.farmers,
+    required this.diseases,
+    required this.fetchedAt,
+  });
+
+  factory AreaReport.fromJson(Map<String, dynamic> j) => AreaReport(
+        districtId: (j['districtId'] ?? '').toString(),
+        days: _toInt(j['days']),
+        farmers: _toInt(j['farmers']),
+        diseases: ((j['diseases'] ?? []) as List)
+            .map((e) => AreaDisease.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        fetchedAt: _toInt(j['fetchedAt']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'districtId': districtId,
+        'days': days,
+        'farmers': farmers,
+        'diseases': diseases.map((d) => d.toJson()).toList(),
+        'fetchedAt': fetchedAt,
+      };
+}

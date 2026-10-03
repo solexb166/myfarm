@@ -170,7 +170,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         controller: _phoneCtrl,
                         hint: t.get('phonePh'),
                         icon: Icons.phone_android,
-                        prefixText: '+256 ',
+                        prefixText: '+256',
                         keyboardType: TextInputType.phone,
                         autofillHints: const [
                           AutofillHints.telephoneNumberNational
@@ -201,7 +201,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           : t.get('codeSent').replaceAll('{email}', _sentTo!),
                     ),
                     const SizedBox(height: 18),
-                    FieldLabel(t.get('code')),
+                    FieldLabel(t.get(_byPhone ? 'codeSms' : 'code')),
                     AppTextField(
                       controller: _codeCtrl,
                       hint: t.get('codePh'),

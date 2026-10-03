@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../services/areas.dart';
 import '../services/backend.dart';
+import '../services/inference_service.dart';
 import '../services/l10n.dart';
 import '../services/storage.dart';
 import '../widgets/common.dart';
+import 'area_screen.dart';
 import 'diagnose_screen.dart';
 import 'history_screen.dart';
 
-/// Home tab: the farmer's own dashboard - scan, next task, last scan and
-/// backup status. [onOpenTab] switches the bottom navigation tab.
+/// Home tab: the farmer's own dashboard - scan, next task, diseases near
+/// them, last scan and backup status. [onOpenTab] switches the bottom navigation tab.
 class HomeScreen extends StatefulWidget {
   final String lang;
   final ValueChanged<String> onLang;
@@ -31,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
   CropPlan? _plan;
   Diagnosis? _lastScan;
   int _pending = 0;
+  District? _area;
+  AreaReport? _areaReport;
 
   L10n get t => L10n(widget.lang);
 
@@ -45,13 +50,41 @@ class _HomeScreenState extends State<HomeScreen> {
     final plan = await Storage.getPlan();
     final history = await Storage.getHistory();
     final pending = await Storage.pendingScanCount();
+    final area =
+        Backend.enabled ? await Areas.byId(await nearYouDistrict()) : null;
+    var report = await Storage.getAreaReport();
+    if (report?.districtId != area?.id) report = null;
     if (!mounted) return;
     setState(() {
       _name = name;
       _plan = plan;
       _lastScan = history.isEmpty ? null : history.first;
       _pending = pending;
+      _area = area;
+      _areaReport = report;
     });
+    // Refresh the area totals a few times a day, in the background.
+    final age = report == null
+        ? null
+        : DateTime.now().millisecondsSinceEpoch - report.fetchedAt;
+    if (area != null &&
+        Backend.account != null &&
+        (age == null || age > const Duration(hours: 6).inMilliseconds)) {
+      try {
+        final fresh = await Backend.areaReport(area.id);
+        if (mounted && _area?.id == fresh.districtId) {
+          setState(() => _areaReport = fresh);
+        }
+      } on AccountError {
+        // Offline: keep what we have.
+      }
+    }
+  }
+
+  Future<void> _openArea() async {
+    await Navigator.push(context,
+        MaterialPageRoute(builder: (_) => AreaScreen(lang: widget.lang)));
+    _load();
   }
 
   Future<void> _scan() async {
@@ -101,6 +134,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 26),
             _SectionHeader(title: t.get('nextTask')),
             _nextTaskCard(),
+            if (Backend.enabled) ...[
+              const SizedBox(height: 22),
+              _SectionHeader(title: t.get('nearYou')),
+              _nearYouCard(),
+            ],
             const SizedBox(height: 22),
             _SectionHeader(
               title: t.get('lastScan'),
@@ -149,6 +187,32 @@ class _HomeScreenState extends State<HomeScreen> {
         next.stage,
       ].where((s) => s.isNotEmpty).join('  ·  '),
       onTap: () => widget.onOpenTab(1),
+    );
+  }
+
+  Widget _nearYouCard() {
+    final top = _areaReport?.diseases.firstOrNull;
+    if (_area == null || top == null) {
+      return _RowCard(
+        icon: Icons.travel_explore,
+        iconColor: AppColors.info,
+        iconBg: AppColors.info.withValues(alpha: 0.12),
+        title: _area == null
+            ? t.get('nearYou')
+            : t.get('nearYouSub').replaceAll('{district}', _area!.name),
+        sub: t.get('nearYouCard'),
+        onTap: _openArea,
+      );
+    }
+    return _RowCard(
+      icon: Icons.coronavirus_outlined,
+      iconColor: AppColors.danger,
+      iconBg: AppColors.dangerSoft,
+      title:
+          '${InferenceService.prettyLabel(top.label)}  ·  ${InferenceService.cropDisplayName(top.crop, widget.lang)}',
+      sub:
+          '${t.get('areaFarmers').replaceAll('{n}', '${top.farmers}')}  ·  ${_area!.name}',
+      onTap: _openArea,
     );
   }
 

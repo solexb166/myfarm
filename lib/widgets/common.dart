@@ -259,11 +259,21 @@ class AppTextField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: AppText.body(15, color: AppColors.creamDim),
+        // A prefix (like +256) sits next to the icon and always shows;
+        // InputDecoration.prefixText would hide it until the field is used.
         prefixIcon: icon == null
             ? null
-            : Icon(icon, size: 20, color: AppColors.creamDim),
-        prefixText: prefixText,
-        prefixStyle: AppText.body(16, color: AppColors.cream),
+            : prefixText == null
+                ? Icon(icon, size: 20, color: AppColors.creamDim)
+                : Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 4),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(icon, size: 20, color: AppColors.creamDim),
+                      const SizedBox(width: 10),
+                      Text(prefixText!,
+                          style: AppText.body(16, color: AppColors.cream)),
+                    ]),
+                  ),
         filled: true,
         fillColor: AppColors.card,
         contentPadding:

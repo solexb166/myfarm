@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -36,7 +35,8 @@ class InferenceService {
         await Interpreter.fromAsset('assets/models/$cropKey.tflite');
     _interpreters[cropKey] = interpreter;
 
-    final raw = await rootBundle.loadString('assets/models/${cropKey}_labels.txt');
+    final raw =
+        await rootBundle.loadString('assets/models/${cropKey}_labels.txt');
     _labels[cropKey] = raw
         .split('\n')
         .map((l) => l.trim())
@@ -90,13 +90,11 @@ class InferenceService {
 
     final input = _tensorFrom(resized);
     // Output buffer: [1, numClasses]
-    final output =
-        List.filled(labels.length, 0.0).reshape([1, labels.length]);
+    final output = List.filled(labels.length, 0.0).reshape([1, labels.length]);
     interpreter.run(input, output);
 
-    final scores = (output[0] as List)
-        .map((e) => (e as num).toDouble())
-        .toList();
+    final scores =
+        (output[0] as List).map((e) => (e as num).toDouble()).toList();
     // softmax already applied in-model; pick the top class.
     int best = 0;
     for (int i = 1; i < scores.length; i++) {
@@ -180,12 +178,17 @@ class InferenceService {
   /// Crop words model labels start with. Labels don't always use the name
   /// shown in the app ('bean_rust', 'banana_black_sigatoka').
   static const _cropPrefixes = {
-    'cassava', 'maize', 'bean', 'beans', 'banana', 'matooke', 'tomato',
+    'cassava',
+    'maize',
+    'bean',
+    'beans',
+    'banana',
+    'matooke',
+    'tomato',
   };
 
   /// Human name for a model label: 'bean_rust' -> 'Rust',
   /// 'banana_black_sigatoka' -> 'Black Sigatoka'.
-  @visibleForTesting
   static String prettyLabel(String label) {
     if (TreatmentDB.isHealthy(label)) return 'Healthy';
     var words = label.toLowerCase().split('_').where((w) => w.isNotEmpty);
@@ -193,6 +196,15 @@ class InferenceService {
       words = words.skip(1);
     }
     return words.map((w) => w[0].toUpperCase() + w.substring(1)).join(' ');
+  }
+
+  /// A crop's name in [lang], from its key or name in either language.
+  /// Unknown crops are returned as given.
+  static String cropDisplayName(String crop, String lang) {
+    final key = cropKeyFor(crop);
+    final c = crops.where((c) => c['key'] == key).firstOrNull;
+    if (c == null) return crop;
+    return lang == 'lg' ? c['luganda']! : c['name']!;
   }
 
   /// Crop key ('cassava') for a crop name in either language ('Muwogo'), or

@@ -233,6 +233,39 @@ class Backend {
     await signOut();
   }
 
+  /// What farmers in [districtId] found in the last [days] days. Downloads
+  /// it when online and keeps a copy; offline (or on error) returns the copy
+  /// if it is for the same district, else throws [AccountError].
+  static Future<AreaReport> areaReport(String districtId,
+      {int days = 90}) async {
+    try {
+      if (account == null) throw AccountError.failed;
+      final params = {'p_district': districtId, 'p_days': days};
+      const limit = Duration(seconds: 20);
+      final rows = await _db
+          .rpc<List<dynamic>>('area_diseases', params: params)
+          .timeout(limit);
+      final farmers =
+          await _db.rpc<dynamic>('area_farmers', params: params).timeout(limit);
+      final report = AreaReport(
+        districtId: districtId,
+        days: days,
+        farmers: (farmers as num?)?.toInt() ?? 0,
+        diseases: rows
+            .map((r) => AreaDisease.fromJson(r as Map<String, dynamic>))
+            .toList(),
+        fetchedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await Storage.saveAreaReport(report);
+      return report;
+    } catch (e) {
+      debugPrint('Area report not downloaded: $e');
+      final saved = await Storage.getAreaReport();
+      if (saved != null && saved.districtId == districtId) return saved;
+      throw AccountError.from(e);
+    }
+  }
+
   /// The farmer's name, from the server when online, else the cached copy.
   static Future<String?> loadDisplayName() async {
     final u = account;

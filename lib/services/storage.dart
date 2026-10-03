@@ -19,6 +19,8 @@ class Storage {
   static const _kHomeDistrict = 'home_district';
   static const _kHomeSubcounty = 'home_subcounty';
   static const _kProfileDirty = 'profile_dirty';
+  static const _kAreaDistrict = 'area_district';
+  static const _kAreaReport = 'area_report';
 
   // ---- language preference ----
   static Future<String> getLang() async {
@@ -189,6 +191,36 @@ class Storage {
     await p.setBool(_kProfileDirty, dirty);
   }
 
+  // ---- diseases near you ----
+  /// District picked on the "Diseases near you" screen, for farmers who
+  /// didn't share a home area. Stays on the phone; it is not uploaded.
+  static Future<String?> getAreaDistrict() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getString(_kAreaDistrict);
+  }
+
+  static Future<void> setAreaDistrict(String id) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kAreaDistrict, id);
+  }
+
+  /// The last area report downloaded (one district), for offline use.
+  static Future<AreaReport?> getAreaReport() async {
+    final p = await SharedPreferences.getInstance();
+    final raw = p.getString(_kAreaReport);
+    if (raw == null) return null;
+    try {
+      return AreaReport.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveAreaReport(AreaReport report) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kAreaReport, jsonEncode(report.toJson()));
+  }
+
   /// Replace the history with scans downloaded from the account (used when
   /// signing in on a phone with no scans yet).
   static Future<void> restoreHistory(List<Diagnosis> scans) async {
@@ -247,6 +279,8 @@ class Storage {
       _kHomeDistrict,
       _kHomeSubcounty,
       _kProfileDirty,
+      _kAreaDistrict,
+      _kAreaReport,
     ]) {
       await p.remove(k);
     }

@@ -149,8 +149,10 @@ boundaries (e.g. the OCHA COD-AB for Uganda) and rerun the script.
 5. **Create the tables**, using either method:
    - **CLI:** `npx supabase login`, then `npx supabase link --project-ref <ref>`,
      then `npx supabase db push`
-   - **Dashboard:** open the SQL Editor and run the files in
-     `supabase/migrations/` in name order
+   - **Dashboard:** open the SQL Editor, paste all of `supabase/setup_all.sql`
+     (every migration in one file) and click Run. It ends with a check that
+     should show 136 districts and 38 treatments. After adding a migration,
+     regenerate it with `python3 tool/combine_migrations.py`.
 6. **Get the keys** from Project Settings → API Keys: the project URL and the
    *publishable* key (`sb_publishable_…`). These are safe to put in the app,
    because RLS protects the data. **Never** put the secret / `service_role`

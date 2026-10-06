@@ -166,7 +166,7 @@ boundaries (e.g. the OCHA COD-AB for Uganda) and rerun the script.
    ```
 
    For Codemagic, add both values to an environment variable group called
-   `supabase` (the `play-release` workflow loads it; see `store/README.md`).
+   `supabase` (both workflows load it; see `store/README.md`).
 8. **Phone sign-in.**
    1. At Africa's Talking, create an account and an app, add credit, and
       create an API key. Optionally request a sender ID (e.g. `MYFARM`);

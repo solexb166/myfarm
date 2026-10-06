@@ -75,9 +75,9 @@ release-signed and targets a recent Android version, then builds
 a new version, raise `version:` in `pubspec.yaml` (e.g. `1.0.1+1`; the part
 after `+` is replaced).
 
-The older `android-release` workflow is unchanged. It is useful for test
-APKs, but it is not set up to load the `release` group, so its builds are
-debug-signed and Play rejects them.
+The older `android-release` workflow loads the `supabase` group too, so
+its test APKs can sign in. It does not load the `release` group, so its
+builds are debug-signed and Play rejects them: use it for testing only.
 
 ## 5. Play Console (1 to 2 hours)
 

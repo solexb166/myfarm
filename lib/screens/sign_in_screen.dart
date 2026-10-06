@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../services/backend.dart';
 import '../services/l10n.dart';
@@ -102,6 +103,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _verify() async {
+    if (_busy) return; // the 6th digit and Enter can both submit
     final code = _codeCtrl.text.replaceAll(RegExp(r'\D'), '');
     if (code.length < 6) {
       setState(() => _errorKey = 'errCode');
@@ -111,6 +113,8 @@ class _SignInScreenState extends State<SignInScreen> {
     await _run(() => _byPhone
         ? Backend.verifyPhoneCode(_sentTo!, code)
         : Backend.verifyEmailCode(_sentTo!, code));
+    // Wrong code: empty the box so it can be typed again.
+    if (mounted && _errorKey == 'errCode') _codeCtrl.clear();
   }
 
   void _setMethod(bool byPhone) {
@@ -133,165 +137,254 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final sent = _sentTo != null;
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 64, 24, 32),
-            child: AutofillGroup(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const IconTile(icon: Icons.eco, size: 38),
-                    const SizedBox(width: 10),
-                    Text(t.get('appName'),
-                        style: AppText.display(20,
-                            weight: FontWeight.w800, spacing: 0)),
-                  ]),
-                  const SizedBox(height: 28),
-                  Text(t.get('signInTitle'), style: AppText.display(30)),
-                  const SizedBox(height: 10),
-                  Text(t.get('signInSub'),
-                      style: AppText.body(15, color: AppColors.creamDim)),
-                  const SizedBox(height: 28),
-                  if (!sent) ...[
-                    _MethodSwitch(
-                      byPhone: _byPhone,
-                      phoneLabel: t.get('phone'),
-                      emailLabel: t.get('emailTab'),
-                      onChange: _setMethod,
-                    ),
-                    const SizedBox(height: 20),
-                    if (_byPhone) ...[
-                      FieldLabel(t.get('phoneNumber')),
-                      AppTextField(
-                        key: const ValueKey('phone'),
-                        controller: _phoneCtrl,
-                        hint: t.get('phonePh'),
-                        icon: Icons.phone_android,
-                        prefixText: '+256',
-                        keyboardType: TextInputType.phone,
-                        autofillHints: const [
-                          AutofillHints.telephoneNumberNational
+    return PopScope(
+      // Back from the code step returns to the number / email step.
+      canPop: !sent,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_busy) _changeAddress();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, box) => SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ConstrainedBox(
+                // Fill the screen so the footer sits at the bottom.
+                constraints: BoxConstraints(minHeight: box.maxHeight),
+                child: IntrinsicHeight(
+                  child: AutofillGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 16),
+                        _header(),
+                        const SizedBox(height: 44),
+                        ...(sent ? _codeStep() : _addressStep()),
+                        if (_errorKey != null) ...[
+                          const SizedBox(height: 14),
+                          Notice(
+                              icon: Icons.error_outline,
+                              text: t.get(_errorKey!)),
                         ],
-                        onSubmitted: (_) => _sendCode(),
-                      ),
-                    ] else ...[
-                      FieldLabel(t.get('email')),
-                      AppTextField(
-                        key: const ValueKey('email'),
-                        controller: _emailCtrl,
-                        hint: t.get('emailPh'),
-                        icon: Icons.mail_outline,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        onSubmitted: (_) => _sendCode(),
-                      ),
-                    ],
-                  ] else ...[
-                    Notice(
-                      icon: _byPhone
-                          ? Icons.sms_outlined
-                          : Icons.mark_email_read_outlined,
-                      color: AppColors.leaf,
-                      text: _byPhone
-                          ? t.get('smsSent').replaceAll(
-                              '{phone}', Backend.formatPhone(_sentTo!))
-                          : t.get('codeSent').replaceAll('{email}', _sentTo!),
-                    ),
-                    const SizedBox(height: 18),
-                    FieldLabel(t.get(_byPhone ? 'codeSms' : 'code')),
-                    AppTextField(
-                      controller: _codeCtrl,
-                      hint: t.get('codePh'),
-                      icon: Icons.pin_outlined,
-                      keyboardType: TextInputType.number,
-                      autofillHints: const [AutofillHints.oneTimeCode],
-                      autofocus: true,
-                      onSubmitted: (_) => _verify(),
-                    ),
-                  ],
-                  if (_errorKey != null) ...[
-                    const SizedBox(height: 14),
-                    Notice(icon: Icons.error_outline, text: t.get(_errorKey!)),
-                  ],
-                  const SizedBox(height: 20),
-                  BigButton(
-                    label: sent ? t.get('verify') : t.get('sendCode'),
-                    icon: sent ? Icons.login : Icons.send_outlined,
-                    loading: _busy,
-                    onTap: sent ? _verify : _sendCode,
-                  ),
-                  if (sent) ...[
-                    const SizedBox(height: 10),
-                    Wrap(spacing: 8, children: [
-                      TextLink(
-                        icon: Icons.refresh,
-                        label: _resendIn > 0
-                            ? t.get('resendIn').replaceAll('{s}', '$_resendIn')
-                            : t.get('resend'),
-                        onTap: _resendIn > 0 || _busy ? null : _sendCode,
-                      ),
-                      TextLink(
-                        icon: Icons.edit_outlined,
-                        label: t.get(_byPhone ? 'changePhone' : 'changeEmail'),
-                        onTap: _busy ? null : _changeAddress,
-                      ),
-                    ]),
-                  ],
-                  const SizedBox(height: 28),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Icon(Icons.wifi_off,
-                        size: 18, color: AppColors.creamDim),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(t.get('onlineOnce'),
-                          style: AppText.body(13.5, color: AppColors.creamDim)),
-                    ),
-                  ]),
-                  const SizedBox(height: 14),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Icon(Icons.privacy_tip_outlined,
-                        size: 18, color: AppColors.creamDim),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          text: '${t.get('agreePrivacy')} ',
-                          style: AppText.body(13.5, color: AppColors.creamDim),
-                          children: [
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.baseline,
-                              baseline: TextBaseline.alphabetic,
-                              child: GestureDetector(
-                                onTap: () => Links.open(Links.privacyPolicy),
-                                child: Text('${t.get('privacyPolicy')}.',
-                                    style: AppText.body(13.5,
-                                            weight: FontWeight.w600,
-                                            color: AppColors.primary)
-                                        .copyWith(
-                                            decoration:
-                                                TextDecoration.underline,
-                                            decorationColor:
-                                                AppColors.primary)),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 20),
+                        BigButton(
+                          label: sent ? t.get('verify') : t.get('sendCode'),
+                          icon: sent ? Icons.login : Icons.arrow_forward,
+                          loading: _busy,
+                          onTap: sent ? _verify : _sendCode,
                         ),
-                      ),
+                        if (sent) _resendRow(),
+                        const Spacer(),
+                        const SizedBox(height: 32),
+                        _footer(),
+                        const SizedBox(height: 20),
+                      ],
                     ),
-                  ]),
-                ],
+                  ),
+                ),
               ),
             ),
           ),
-          Positioned(
-            top: 16,
-            right: 16,
-            child: LangToggle(lang: widget.lang, onChange: widget.onLang),
+        ),
+      ),
+    );
+  }
+
+  /// Logo and name on the left, language on the right.
+  Widget _header() => Row(children: [
+        const IconTile(icon: Icons.eco, size: 36),
+        const SizedBox(width: 10),
+        Text(t.get('appName'),
+            style: AppText.display(18, weight: FontWeight.w800, spacing: 0)),
+        const Spacer(),
+        LangToggle(lang: widget.lang, onChange: widget.onLang),
+      ]);
+
+  /// Step 1: phone number or email.
+  List<Widget> _addressStep() => [
+        Text(t.get('signInTitle'), style: AppText.display(30)),
+        const SizedBox(height: 8),
+        Text(t.get('signInSub'),
+            style: AppText.body(15.5, color: AppColors.textDim)),
+        const SizedBox(height: 28),
+        _MethodSwitch(
+          byPhone: _byPhone,
+          phoneLabel: t.get('phone'),
+          emailLabel: t.get('emailTab'),
+          onChange: _setMethod,
+        ),
+        const SizedBox(height: 16),
+        if (_byPhone)
+          AppTextField(
+            key: const ValueKey('phone'),
+            controller: _phoneCtrl,
+            hint: t.get('phonePh'),
+            icon: Icons.phone_android,
+            prefixText: '+256',
+            keyboardType: TextInputType.phone,
+            autofillHints: const [AutofillHints.telephoneNumberNational],
+            onSubmitted: (_) => _sendCode(),
+          )
+        else
+          AppTextField(
+            key: const ValueKey('email'),
+            controller: _emailCtrl,
+            hint: t.get('emailPh'),
+            icon: Icons.mail_outline,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+            onSubmitted: (_) => _sendCode(),
+          ),
+      ];
+
+  /// Step 2: the 6-digit code. Signs in by itself once 6 digits are in.
+  List<Widget> _codeStep() {
+    final to = _byPhone ? Backend.formatPhone(_sentTo!) : _sentTo!;
+    return [
+      Text(t.get('codeTitle'), style: AppText.display(30)),
+      const SizedBox(height: 8),
+      Text.rich(
+        TextSpan(
+          text: t
+              .get(_byPhone ? 'codeSentSms' : 'codeSentEmail')
+              .replaceAll('{to}', to),
+          style: AppText.body(15.5, color: AppColors.textDim),
+          children: [
+            const TextSpan(text: '  '),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: _InlineLink(
+                label: t.get('change'),
+                onTap: _busy ? null : _changeAddress,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 28),
+      _CodeField(
+        controller: _codeCtrl,
+        enabled: !_busy,
+        onComplete: _verify,
+      ),
+    ];
+  }
+
+  Widget _resendRow() => Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(t.get('noCode'),
+                style: AppText.body(14, color: AppColors.textDim)),
+            const SizedBox(width: 6),
+            _resendIn > 0
+                ? Text(t.get('resendIn').replaceAll('{s}', '$_resendIn'),
+                    style: AppText.body(14,
+                        weight: FontWeight.w600, color: AppColors.textDim))
+                : _InlineLink(
+                    label: t.get('resend'),
+                    onTap: _busy ? null : _sendCode,
+                  ),
+          ],
+        ),
+      );
+
+  /// Small print at the bottom: offline note and privacy policy.
+  Widget _footer() => Column(children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.wifi_off, size: 15, color: AppColors.textDim),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(t.get('onlineOnceShort'),
+                textAlign: TextAlign.center,
+                style: AppText.body(13, color: AppColors.textDim)),
           ),
         ]),
+        const SizedBox(height: 6),
+        _InlineLink(
+          label: t.get('privacyPolicy'),
+          small: true,
+          onTap: () => Links.open(Links.privacyPolicy),
+        ),
+      ]);
+}
+
+/// Text that acts as a link, in the primary colour.
+class _InlineLink extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final bool small;
+  const _InlineLink({required this.label, this.onTap, this.small = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = onTap == null ? AppColors.textDim : AppColors.primary;
+    return Semantics(
+      link: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+          child: Text(label,
+              style: AppText.body(small ? 13 : 15,
+                      weight: FontWeight.w700, color: color)
+                  .copyWith(
+                      decoration: small ? TextDecoration.underline : null,
+                      decorationColor: color)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Large, centred box for the 6-digit code. Calls [onComplete] as soon as
+/// the sixth digit is typed (or pasted, or filled in from the SMS).
+class _CodeField extends StatelessWidget {
+  final TextEditingController controller;
+  final bool enabled;
+  final VoidCallback onComplete;
+  const _CodeField({
+    required this.controller,
+    required this.enabled,
+    required this.onComplete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: AppColors.border),
+    );
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      autofocus: true,
+      keyboardType: TextInputType.number,
+      autofillHints: const [AutofillHints.oneTimeCode],
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(6),
+      ],
+      textAlign: TextAlign.center,
+      style: AppText.display(30, weight: FontWeight.w700, spacing: 12),
+      onChanged: (v) {
+        if (v.length == 6) onComplete();
+      },
+      onSubmitted: (_) => onComplete(),
+      decoration: InputDecoration(
+        hintText: '••••••',
+        hintStyle: AppText.display(30,
+            weight: FontWeight.w700, color: AppColors.border, spacing: 12),
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+        enabledBorder: border,
+        disabledBorder: border,
+        focusedBorder: border.copyWith(
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
       ),
     );
   }

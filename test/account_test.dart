@@ -116,9 +116,9 @@ void main() {
     await tester.pump();
 
     // Phone is the default way to sign in.
-    expect(find.text('Phone number'), findsOneWidget);
+    expect(find.text('+256'), findsOneWidget);
     await tester.enterText(find.byType(TextField), '0414 123456');
-    await tester.tap(find.text('Send sign-in code'));
+    await tester.tap(find.text('Send code'));
     await tester.pump();
 
     expect(find.text('Enter a Ugandan mobile number, like 0772 123456.'),
@@ -132,15 +132,15 @@ void main() {
         MaterialApp(home: SignInScreen(lang: 'en', onLang: (_) {})));
     await tester.pump();
 
-    expect(find.text('Sign in to get started'), findsOneWidget);
+    expect(find.text('Welcome'), findsOneWidget);
     await tester.tap(find.text('Email'));
     await tester.pump();
     await tester.enterText(find.byType(TextField), 'nakato@gmail');
-    await tester.tap(find.text('Send sign-in code'));
+    await tester.tap(find.text('Send code'));
     await tester.pump();
 
     expect(find.text('Enter a valid email address.'), findsOneWidget);
-    expect(find.text('Code from the email'), findsNothing);
+    expect(find.text('Enter the code'), findsNothing);
   });
 
   testWidgets('a build without Supabase settings opens straight to home',

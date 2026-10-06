@@ -111,11 +111,11 @@ workflows:
     environment:
       flutter: stable
       java: 17
-      # Optional Supabase backend: create a variable group named "supabase"
-      # holding SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, then uncomment.
-      # Without them the app builds as before, fully offline.
-      # groups:
-      #   - supabase
+      # Supabase backend: the "supabase" variable group holds SUPABASE_URL
+      # and SUPABASE_PUBLISHABLE_KEY (Codemagic > App settings > Environment
+      # variables). If the values are empty the app builds fully offline.
+      groups:
+        - supabase
     scripts:
       - *regenerate_android
       - *set_app_id

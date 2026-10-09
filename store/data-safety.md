@@ -12,7 +12,7 @@ app collects, update these and the privacy policy together.
 |---|---|
 | Does your app collect or share any of the required user data types? | Yes |
 | Is all of the user data collected by your app encrypted in transit? | Yes |
-| Which of the following methods of account creation does your app support? | OAuth / Other: phone number or email with a one-time code |
+| Which of the following methods of account creation does your app support? | Other: email with a one-time code |
 | Do you provide a way for users to request that their data is deleted? | Yes |
 | Delete account URL | https://solexb166.github.io/myfarm/delete-account.html |
 
@@ -25,8 +25,12 @@ ephemerally: no**.
 | Category → type | Required or optional | Purposes |
 |---|---|---|
 | Personal info → Name | Optional (users can leave it empty) | App functionality, Account management |
-| Personal info → Email address | Optional (users can use phone instead) | Account management |
-| Personal info → Phone number | Optional (users can use email instead) | Account management |
+| Personal info → Email address | Required (it is how farmers sign in) | Account management |
+
+Phone sign-in is switched off for now (`PHONE_SIGN_IN`), so phone numbers
+are not collected. When you turn it on, change the email row to Optional and
+add **Personal info → Phone number: Optional, Account management**, and
+switch the reviewer login below to the test phone number.
 | Location → Approximate location | Optional (users can choose "Don't share") | App functionality |
 | Photos and videos → Photos | Required (each scan's photo is backed up) | App functionality |
 | App activity → Other user-generated content (scan results, season plan) | Required | App functionality |
@@ -57,19 +61,25 @@ If you later add crash reporting (Sentry, Firebase Crashlytics), add
 
 ### App access: test login for Google's reviewers
 
-Reviewers can't receive an SMS on a Ugandan number, so give them a test
-phone number with a fixed code. Supabase sends no SMS for it.
+Sign-in sends a code by email, so reviewers need an inbox they can open.
 
-1. Supabase dashboard → Authentication → Sign In / Providers → Phone →
-   **Test Phone Numbers and OTPs**: add `256700000001=246810`.
+1. Create a Gmail account just for reviewers, e.g. `myfarm.review@gmail.com`,
+   with a password you don't use anywhere else (no 2-Step Verification, so
+   reviewers can open it).
 2. Play Console → App access → Add instructions:
    - Name: `Reviewer login`
-   - Username / phone: `0700 000001`
-   - Password / code: `246810`
-   - Instructions: "On the first screen keep Phone selected, enter 0700 000001
-     and tap Send sign-in code, then enter 246810. To try a diagnosis, tap
-     Scan a crop, choose Cassava, Beans or Matooke, then Gallery and pick a
-     photo of that crop's leaf."
+   - Username: the reviewer Gmail address
+   - Password: its password
+   - Instructions: "On the first screen enter the email above and tap Send
+     code. Open that inbox at gmail.com with the same email and password,
+     and type the 6-digit code from MY FARM into the app. To try a
+     diagnosis, tap Scan a crop, choose Cassava, Beans or Matooke, then
+     Gallery and pick a photo of that crop's leaf."
+
+With phone sign-in on, use a test phone number instead: Supabase →
+Authentication → Sign In / Providers → Phone → **Test Phone Numbers and
+OTPs**: `256700000001=246810`; reviewers enter `0700 000001`, then
+`246810`. Supabase sends no SMS for it.
 
 ### Content rating questionnaire (IARC)
 

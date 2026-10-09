@@ -41,7 +41,7 @@ ENGLISH AND LUGANDA
 Use the whole app in English or Luganda, and switch any time.
 
 YOUR RECORDS ARE SAFE
-Sign in once with your phone number or email. No password needed. Your scans and season plan are backed up to your account, so you keep them if you change phones. Location is only recorded if you agree, and only as your district.
+Sign in once with your email. No password needed. Your scans and season plan are backed up to your account, so you keep them if you change phones. Location is only recorded if you agree, and only as your district.
 
 MY FARM gives guidance from a photo, not a lab test. For serious or spreading problems, talk to your local agricultural extension officer.
 ```

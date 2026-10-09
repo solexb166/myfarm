@@ -19,16 +19,16 @@ Follow `supabase/README.md` → Setup. In short:
    offered (e.g. Frankfurt or London).
 2. Push the database: `npx supabase link --project-ref <ref>` then
    `npx supabase db push`.
-3. Turn on the **Phone** and **Email** providers, set the email code
-   templates, and connect a real email sender (SMTP).
-4. Set up **Africa's Talking** and the **Send SMS hook** (section "Phone
-   sign-in" in `supabase/README.md`).
-5. Deploy the two functions:
+3. Turn on the **Email** provider, connect an email sender (SMTP) and set
+   the email code templates.
+4. Deploy the account-deletion function:
    ```bash
-   npx supabase functions deploy send-sms --no-verify-jwt
    npx supabase functions deploy delete-account --no-verify-jwt
    ```
-6. Add the reviewer test number (see `data-safety.md` → App access).
+5. **Later, for phone sign-in** (off for now): set up Africa's Talking and
+   the Send SMS hook (section "Phone sign-in" in `supabase/README.md`),
+   then add `PHONE_SIGN_IN` = `true` to the `supabase` group in Codemagic.
+6. Set up the reviewer login (see `data-safety.md` → App access).
 7. Consider the **Pro plan** (US$25/month) before launch: daily backups,
    and free projects pause after a week without traffic.
 
@@ -96,7 +96,7 @@ apply for production access.
 
 1. **Internal testing** first (no review wait, up to 100 testers): upload
    the `.aab`, add your own Google account, install from the Play link and
-   test sign-in by SMS and email, a scan, backup, Diseases near you and
+   test email sign-in, a scan, backup, Diseases near you and
    Delete account.
 2. **Closed testing**: create a track, add at least 12 testers by email or a
    Google Group, share the opt-in link, and upload the same `.aab`.

@@ -20,6 +20,11 @@ class SignInScreen extends StatefulWidget {
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
+/// Phone (SMS) sign-in is switched off until the SMS sender is set up; the
+/// screen then offers email only. Turn it on with
+/// --dart-define=PHONE_SIGN_IN=true (see supabase/README.md, Phone sign-in).
+const phoneSignIn = bool.fromEnvironment('PHONE_SIGN_IN');
+
 class _SignInScreenState extends State<SignInScreen> {
   static const _resendSeconds = 60;
 
@@ -29,8 +34,9 @@ class _SignInScreenState extends State<SignInScreen> {
   final _codeCtrl = TextEditingController();
   Timer? _resendTimer;
 
-  // Phone first: most farmers have a phone number, fewer use email.
-  bool _byPhone = true;
+  // Phone first when available: most farmers have a phone number, fewer
+  // use email.
+  bool _byPhone = phoneSignIn;
   // Where the code was sent (+256... or an email); null while entering it.
   String? _sentTo;
   int _resendIn = 0;
@@ -200,20 +206,22 @@ class _SignInScreenState extends State<SignInScreen> {
         LangToggle(lang: widget.lang, onChange: widget.onLang),
       ]);
 
-  /// Step 1: phone number or email.
+  /// Step 1: phone number or email (email only while [phoneSignIn] is off).
   List<Widget> _addressStep() => [
         Text(t.get('signInTitle'), style: AppText.display(30)),
         const SizedBox(height: 8),
-        Text(t.get('signInSub'),
+        Text(t.get(phoneSignIn ? 'signInSub' : 'signInSubEmail'),
             style: AppText.body(15.5, color: AppColors.textDim)),
         const SizedBox(height: 28),
-        _MethodSwitch(
-          byPhone: _byPhone,
-          phoneLabel: t.get('phone'),
-          emailLabel: t.get('emailTab'),
-          onChange: _setMethod,
-        ),
-        const SizedBox(height: 16),
+        if (phoneSignIn) ...[
+          _MethodSwitch(
+            byPhone: _byPhone,
+            phoneLabel: t.get('phone'),
+            emailLabel: t.get('emailTab'),
+            onChange: _setMethod,
+          ),
+          const SizedBox(height: 16),
+        ],
         if (_byPhone)
           AppTextField(
             key: const ValueKey('phone'),

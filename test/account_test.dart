@@ -108,21 +108,17 @@ void main() {
     expect(await Storage.getTreatmentOverrides(), hasLength(1));
   });
 
-  testWidgets('sign-in screen rejects an invalid phone number offline',
+  testWidgets('sign-in screen offers email only while phone is off',
       (tester) async {
     GoogleFonts.config.allowRuntimeFetching = false;
     await tester.pumpWidget(
         MaterialApp(home: SignInScreen(lang: 'en', onLang: (_) {})));
     await tester.pump();
 
-    // Phone is the default way to sign in.
-    expect(find.text('+256'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), '0414 123456');
-    await tester.tap(find.text('Send code'));
-    await tester.pump();
-
-    expect(find.text('Enter a Ugandan mobile number, like 0772 123456.'),
-        findsOneWidget);
+    expect(phoneSignIn, isFalse);
+    expect(find.text('Phone'), findsNothing);
+    expect(find.text('+256'), findsNothing);
+    expect(find.text('name@example.com'), findsOneWidget);
   });
 
   testWidgets('sign-in screen rejects an invalid email without a network call',
@@ -133,8 +129,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('Welcome'), findsOneWidget);
-    await tester.tap(find.text('Email'));
-    await tester.pump();
     await tester.enterText(find.byType(TextField), 'nakato@gmail');
     await tester.tap(find.text('Send code'));
     await tester.pump();

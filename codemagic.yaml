@@ -113,7 +113,8 @@ workflows:
       java: 17
       # Supabase backend: the "supabase" variable group holds SUPABASE_URL
       # and SUPABASE_PUBLISHABLE_KEY (Codemagic > App settings > Environment
-      # variables). If the values are empty the app builds fully offline.
+      # variables), and optionally PHONE_SIGN_IN=true once SMS is set up.
+      # If the values are empty the app builds fully offline.
       groups:
         - supabase
     scripts:
@@ -130,17 +131,20 @@ workflows:
         script: |
           flutter build appbundle --release \
             --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}" \
+            --dart-define=PHONE_SIGN_IN="${PHONE_SIGN_IN:-false}"
       - name: Build APK (for direct sharing)
         script: |
           flutter build apk --release \
             --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}" \
+            --dart-define=PHONE_SIGN_IN="${PHONE_SIGN_IN:-false}"
       - name: Build DEBUG APK (shows real crash errors on screen)
         script: |
           flutter build apk --debug \
             --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}" \
+            --dart-define=PHONE_SIGN_IN="${PHONE_SIGN_IN:-false}"
     artifacts:
       - build/**/outputs/**/*.aab
       - build/**/outputs/**/*.apk
@@ -196,7 +200,8 @@ workflows:
           flutter build appbundle --release \
             --build-number=$((100 + PROJECT_BUILD_NUMBER)) \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=PHONE_SIGN_IN="${PHONE_SIGN_IN:-false}"
     artifacts:
       - build/**/outputs/**/*.aab
     # Upload straight to Play's internal testing track. Needs a Google Cloud

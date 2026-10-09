@@ -23,9 +23,9 @@ scans, plan, profile and photos. Treatments are read-only to the app.
 
 ## Accounts (phone or email sign-in)
 
-The app opens on a sign-in screen. Farmers enter their **phone number**
-(the default) or **email** and type the 6-digit code they receive by SMS or
-email; there is no password. A phone account and an email account are
+The app opens on a sign-in screen. Farmers enter their **email** (and,
+once phone sign-in is switched on, optionally their **phone number**) and
+type the 6-digit code they receive; there is no password. A phone account and an email account are
 separate accounts.
 
 - **Internet is needed once**, to sign in. The session is then kept on the
@@ -46,6 +46,11 @@ separate accounts.
   this.
 
 ## Phone sign-in (Africa's Talking)
+
+**Switched off for now.** The app shows email sign-in only until it is
+built with `--dart-define=PHONE_SIGN_IN=true`. In Codemagic, add
+`PHONE_SIGN_IN` = `true` to the `supabase` group once the steps below are
+done. Everything else (the hook, the limits) is ready.
 
 Supabase Auth creates the code; the **Send SMS hook**
 (`functions/send-sms`) texts it with [Africa's Talking](https://africastalking.com).

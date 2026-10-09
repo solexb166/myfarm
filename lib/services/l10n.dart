@@ -137,6 +137,8 @@ class L10n {
       'signInTitle': 'Welcome',
       'signInSub':
           'Sign in with your phone number or email. We will send you a 6\u2011digit code, no password needed.',
+      'signInSubEmail':
+          'Sign in with your email. We will send you a 6\u2011digit code, no password needed.',
       'codeTitle': 'Enter the code',
       'codeSentSms': 'We sent a 6\u2011digit code by SMS to {to}.',
       'codeSentEmail':
@@ -341,6 +343,8 @@ class L10n {
       'signInTitle': 'Tukwanirizza',
       'signInSub':
           "Yingira ne nnamba y'essimu yo oba email. Tujja kukuweereza koodi ya nnamba 6, tekyetaagisa kigambo kya kyama.",
+      'signInSubEmail':
+          'Yingira ne email yo. Tujja kukuweereza koodi ya nnamba 6, tekyetaagisa kigambo kya kyama.',
       'codeTitle': 'Wandiika koodi',
       'codeSentSms': 'Tuweerezza koodi ya nnamba 6 mu SMS ku {to}.',
       'codeSentEmail':

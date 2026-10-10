@@ -9,4 +9,7 @@ beans.jpg     Bean plant leaves. Supplied by the MY FARM team
               (October 2026). Source to be confirmed before the Play
               Store release.
 
-maize.jpg: not added yet; the app shows a drawing for it.
+maize.jpg     "corn leaves" by normanack, CC BY 2.0
+              (https://creativecommons.org/licenses/by/2.0/),
+              https://www.flickr.com/photos/29278394@N00/2637276624
+              Cropped and resized.

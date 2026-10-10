@@ -62,6 +62,6 @@ showing a real leaf photo.
 
 - **App category:** Education (Play has no Agriculture category).
 - **Tags:** pick the closest ones Play offers, such as Education and Reference.
-- **Contact email:** your support email, the same one used in `docs/`
+- **Contact email:** myfarm.afrotym@gmail.com
 - **Website:** https://solexb166.github.io/myfarm/
 - **Privacy policy:** https://solexb166.github.io/myfarm/privacy.html

@@ -32,9 +32,8 @@ Follow `supabase/README.md` → Setup. In short:
 
 ## 2. Privacy pages on GitHub Pages (15 minutes)
 
-1. Replace `REPLACE-WITH-YOUR-EMAIL@example.com` in `docs/index.html`,
-   `docs/privacy.html` and `docs/delete-account.html` with your support email.
-   Farmers and Google will use it.
+1. The pages show the support email **myfarm.afrotym@gmail.com**. Farmers
+   and Google use it, so check that inbox regularly.
 2. Merge this branch into `main`.
 3. GitHub → repository **Settings → Pages** → Source: *Deploy from a branch*
    → Branch `main`, folder `/docs` → Save.

@@ -78,7 +78,12 @@ class InferenceService {
     if (decoded == null) {
       throw Exception('Could not read image');
     }
-    final resized = img.copyResize(decoded, width: imgSize, height: imgSize);
+    // Prepare the photo the way the training photos were (ml/train_cpu.py):
+    // upright, then stretched to 224 x 224 with bilinear smoothing.
+    final resized = img.copyResize(img.bakeOrientation(decoded),
+        width: imgSize,
+        height: imgSize,
+        interpolation: img.Interpolation.linear);
 
     // Sanity check BEFORE running the model: does this even look like a
     // natural leaf photo? Screenshots, documents, and plain walls are mostly

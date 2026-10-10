@@ -67,6 +67,11 @@ void main() {
         AccountError.offline);
     expect(AccountError.from(AuthRetryableFetchException(message: 'x')),
         AccountError.offline);
+    // e.g. Supabase couldn't send the email: a server problem, not offline.
+    expect(
+        AccountError.from(AuthRetryableFetchException(
+            message: 'Error sending magic link email', statusCode: '500')),
+        AccountError.server);
     expect(
         AccountError.from(const AuthApiException('Token has expired',
             statusCode: '403', code: 'otp_expired')),

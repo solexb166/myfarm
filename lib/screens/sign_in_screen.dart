@@ -472,5 +472,6 @@ String accountErrorKey(AccountError e) => switch (e) {
       AccountError.offline => 'errOffline',
       AccountError.wrongCode => 'errCode',
       AccountError.tooManyTries => 'errTooMany',
+      AccountError.server => 'errServer',
       AccountError.failed => 'errGeneric',
     };

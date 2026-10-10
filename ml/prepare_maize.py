@@ -11,7 +11,7 @@ Each archive is downloaded, unpacked, every photo is stretched to 224 x 224
 deleted before the next one, so the ~17 GB of downloads never sit on disk at
 once. Result: OUT/<class>/<source>_<n>.jpg
 
-    python ml/prepare_maize.py OUT     (needs curl, and 7z for the .rar files)
+    python ml/prepare_maize.py OUT     (needs curl, 7z and unrar)
 """
 import os
 import shutil
@@ -58,17 +58,21 @@ def main(out):
             print(f'{src}/{name}: already done', flush=True)
             continue
         archive = os.path.join(work, name)
-        print(f'{src}/{name}: downloading', flush=True)
-        # curl, not urllib: Dataverse refuses Python's default client.
-        subprocess.run(['curl', '-sS', '-f', '-L', '--retry', '5',
-                        '--retry-all-errors', '-o', archive,
-                        f'{API}{file_id}'], check=True)
+        if not os.path.exists(archive):  # kept from an interrupted run
+            print(f'{src}/{name}: downloading', flush=True)
+            # curl, not urllib: Dataverse refuses Python's default client.
+            subprocess.run(['curl', '-sS', '-f', '-L', '--retry', '5',
+                            '--retry-all-errors', '-o', archive + '.part',
+                            f'{API}{file_id}'], check=True)
+            os.rename(archive + '.part', archive)
         unpacked = os.path.join(work, 'x')
         shutil.rmtree(unpacked, ignore_errors=True)
         os.makedirs(unpacked)
         print(f'{src}/{name}: unpacking', flush=True)
-        subprocess.run(['7z', 'x', '-y', f'-o{unpacked}', archive],
-                       check=True, stdout=subprocess.DEVNULL)
+        cmd = (['unrar', 'x', '-o+', '-idq', archive, unpacked + '/']
+               if name.endswith('.rar')
+               else ['7z', 'x', '-y', f'-o{unpacked}', archive])
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
         os.remove(archive)
 
         dest = os.path.join(out, cls)

@@ -20,3 +20,4 @@ CM_KEYSTORE*.txt
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+__pycache__/

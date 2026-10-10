@@ -493,11 +493,20 @@ enum AccountError implements Exception {
   offline,
   wrongCode,
   tooManyTries,
+  // The server answered with an error (5xx), e.g. it couldn't send the
+  // email. Not the farmer's connection.
+  server,
   failed;
 
   static AccountError from(Object e) {
     if (e is AccountError) return e;
-    if (e is AuthRetryableFetchException) return offline;
+    if (e is AuthRetryableFetchException) {
+      // Supabase raises this both for no network (no status) and for
+      // server errors (status 500+), which mustn't read as "offline".
+      if (e.statusCode == null) return offline;
+      debugPrint('Auth server error ${e.statusCode}: ${e.message}');
+      return server;
+    }
     if (e is AuthException) {
       if (e.statusCode == '429' || (e.code ?? '').contains('rate_limit')) {
         return tooManyTries;

@@ -155,6 +155,8 @@ class L10n {
       'verify': 'Sign in',
       'resend': 'Resend',
       'resendIn': 'Resend in {s}s',
+      'errServer':
+          "Our server couldn't send the code right now. This is not your connection. Please try again in a few minutes.",
       'errOffline':
           'No internet connection. Connect and try again. You can keep diagnosing offline.',
       'errEmail': 'Enter a valid email address.',
@@ -361,6 +363,8 @@ class L10n {
       'verify': 'Yingira',
       'resend': 'Weereza nate',
       'resendIn': 'Weereza nate mu sikonda {s}',
+      'errServer':
+          "Ensobi eri ku server, si ku ssimu yo. Koodi teyasobodde kuweerezebwa. Gezaako oluvannyuma lw'eddakiika ntono.",
       'errOffline':
           'Tewali yintaneeti. Yunga oddemu ogezeeko. Osobola okweyongera okukebera awatali yintaneeti.',
       'errEmail': 'Wandiika email entuufu.',

@@ -35,6 +35,47 @@ The previous model was trained in Colab on the larger Kaggle 2020 version of
 this dataset, which probably contains some of these test photos, so its
 score here is if anything flattering.
 
+## Maize (new, October 2026)
+
+- **Classes:** healthy, northern leaf blight, lethal necrosis (MLN), streak
+  virus (MSV).
+- **Data** (`ml/prepare_maize.py`), all photos stretched to 224 x 224:
+  - NM-AIST Tanzania maize dataset, doi:10.7910/DVN/GDON8Q (CC0):
+    healthy, MLN, MSV
+  - Makerere University (Uganda) maize image dataset, doi:10.7910/DVN/LPGHKK
+    (CC0): healthy, MSV, maize leaf blight (used as northern leaf blight)
+  - PLANTHEAD maize leaves, Tanzania, EWA-BELT project,
+    doi:10.5281/zenodo.17085836 (CC BY 4.0), 321 photos: half in training
+    (repeated 8x), half held back as the "other project" test. Its MLN
+    photos show late-stage, drying leaves, which the two main datasets lack.
+- **Training:** `ml/train_cpu.py --max-train-per-class 2500 --extra ...`;
+  10,000 main training photos plus the PLANTHEAD half; 4,675 validation and
+  4,676 test photos (main datasets).
+- **Report:** `ml/reports/maize.json`; confusion matrices in
+  `assets/models/maize_confusion_matrix.png` and
+  `ml/reports/maize_external_confusion_matrix.png`.
+
+| | Main test (4,676) | Other project (162) |
+|---|---|---|
+| Correct | 99.1% | 98.8% |
+| Healthy | 99.5% | 100% |
+| Northern leaf blight | 99.2% | 100% |
+| Lethal necrosis | 95.8% | 96.1% |
+| Streak virus | 99.8% | 100% |
+
+A first version trained without the PLANTHEAD photos scored 99.5% on the
+main test but only 39% on late-stage lethal necrosis (it called most of it
+streak virus), so it was not used.
+
+These scores are optimistic: photos in each collection were taken in the same
+fields on the same days, so test photos have near-twins in training. Expect
+lower accuracy on farmers' own photos, especially early lethal necrosis,
+which looks like streak virus. Collecting a few hundred photos from Ugandan
+farms, labelled by an extension officer, is the best next step.
+
+Photo credit (CC BY 4.0): PLANTHEAD Diagnostic Platform, EWA-BELT project
+(EU Horizon 2020, GA 862848).
+
 ## Beans, matooke
 
 Trained in Colab with the notebooks in this folder; see

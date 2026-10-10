@@ -1,0 +1,4 @@
+healthy
+maize_northern_leaf_blight
+maize_lethal_necrosis
+maize_streak_virus

@@ -25,7 +25,7 @@ FIND CROP DISEASES FROM A PHOTO
 • Cassava: mosaic disease, brown streak, bacterial blight, green mottle
 • Beans: rust, angular leaf spot
 • Matooke: black sigatoka, fusarium wilt
-• Maize is coming soon
+• Maize: lethal necrosis, streak virus, northern leaf blight
 The disease check runs on your phone, so it works in the garden with no network and no data costs.
 
 KNOW WHAT TO DO

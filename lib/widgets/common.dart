@@ -230,6 +230,7 @@ class AppTextField extends StatelessWidget {
   final String? prefixText;
   final bool enabled;
   final bool autofocus;
+  final bool obscure;
   const AppTextField({
     super.key,
     required this.controller,
@@ -242,6 +243,7 @@ class AppTextField extends StatelessWidget {
     this.prefixText,
     this.enabled = true,
     this.autofocus = false,
+    this.obscure = false,
   });
 
   @override
@@ -254,6 +256,7 @@ class AppTextField extends StatelessWidget {
       autofillHints: autofillHints,
       enabled: enabled,
       autofocus: autofocus,
+      obscureText: obscure,
       autocorrect: false,
       style: AppText.body(16, color: AppColors.cream),
       decoration: InputDecoration(

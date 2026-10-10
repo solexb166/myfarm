@@ -61,25 +61,23 @@ If you later add crash reporting (Sentry, Firebase Crashlytics), add
 
 ### App access: test login for Google's reviewers
 
-Sign-in sends a code by email, so reviewers need an inbox they can open.
+Reviewers can't receive the emailed sign-in code, so one account signs in
+with a password instead: `myfarm.afrotym+review@gmail.com` (set in
+`Backend.reviewEmail`). Only this address gets a password box; farmers'
+accounts have no password.
 
-1. Create a Gmail account just for reviewers, e.g. `myfarm.review@gmail.com`,
-   with a password you don't use anywhere else (no 2-Step Verification, so
-   reviewers can open it).
-2. Play Console → App access → Add instructions:
+1. Supabase dashboard → Authentication → Users → **Add user → Create new
+   user**: email `myfarm.afrotym+review@gmail.com`, a strong password, and
+   **Auto Confirm User** ticked.
+2. Play Console → App access → **All or some functionality is restricted**
+   → Add instructions:
    - Name: `Reviewer login`
-   - Username: the reviewer Gmail address
-   - Password: its password
+   - Username: `myfarm.afrotym+review@gmail.com`
+   - Password: the password from step 1
    - Instructions: "On the first screen enter the email above and tap Send
-     code. Open that inbox at gmail.com with the same email and password,
-     and type the 6-digit code from MY FARM into the app. To try a
-     diagnosis, tap Scan a crop, choose Cassava, Beans or Matooke, then
+     code. The app then asks for a password: enter the one above and tap
+     Sign in. To try a diagnosis, tap Scan a crop, choose a crop, then
      Gallery and pick a photo of that crop's leaf."
-
-With phone sign-in on, use a test phone number instead: Supabase →
-Authentication → Sign In / Providers → Phone → **Test Phone Numbers and
-OTPs**: `256700000001=246810`; reviewers enter `0700 000001`, then
-`246810`. Supabase sends no SMS for it.
 
 ### Content rating questionnaire (IARC)
 

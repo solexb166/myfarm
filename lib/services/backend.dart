@@ -167,6 +167,31 @@ class Backend {
     }
   }
 
+  /// The one account that signs in with a password instead of an emailed
+  /// code: for Google Play's reviewers, who can't receive the code. Create it
+  /// in Supabase (Authentication → Users → Add user, with a password, auto
+  /// confirmed). Farmers' accounts have no password, so for them nothing
+  /// changes. Override with --dart-define=REVIEW_EMAIL=... if needed.
+  static const reviewEmail = String.fromEnvironment('REVIEW_EMAIL',
+      defaultValue: 'myfarm.afrotym+review@gmail.com');
+
+  static bool isReviewEmail(String email) =>
+      reviewEmail.isNotEmpty &&
+      email.trim().toLowerCase() == reviewEmail.toLowerCase();
+
+  /// Sign in to the reviewer account (see [reviewEmail]).
+  static Future<void> signInWithPassword(String email, String password) async {
+    final AuthResponse res;
+    try {
+      res = await _db.auth
+          .signInWithPassword(email: email.trim(), password: password)
+          .timeout(_timeout);
+    } catch (e) {
+      throw AccountError.from(e);
+    }
+    await _afterSignIn(res.user);
+  }
+
   /// Step 2 of signing in by email: check the code from the email.
   static Future<void> verifyEmailCode(String email, String code) async {
     final AuthResponse res;
@@ -521,7 +546,11 @@ enum AccountError implements Exception {
       if (e.statusCode == '429' || (e.code ?? '').contains('rate_limit')) {
         return tooManyTries;
       }
-      if (e.code == 'otp_expired' || e.statusCode == '403') return wrongCode;
+      if (e.code == 'otp_expired' ||
+          e.code == 'invalid_credentials' ||
+          e.statusCode == '403') {
+        return wrongCode;
+      }
       return failed;
     }
     if (e is PostgrestException || e is StorageException) return failed;

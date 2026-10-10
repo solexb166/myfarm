@@ -142,6 +142,32 @@ void main() {
     expect(find.text('Enter the code'), findsNothing);
   });
 
+  test('only the reviewer email signs in with a password', () {
+    expect(Backend.isReviewEmail(Backend.reviewEmail), isTrue);
+    expect(Backend.isReviewEmail(' MYFARM.AFROTYM+REVIEW@gmail.com '), isTrue);
+    expect(Backend.isReviewEmail('myfarm.afrotym@gmail.com'), isFalse);
+    expect(Backend.isReviewEmail('nakato@gmail.com'), isFalse);
+  });
+
+  testWidgets('the reviewer email asks for a password, without a network call',
+      (tester) async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    await tester.pumpWidget(
+        MaterialApp(home: SignInScreen(lang: 'en', onLang: (_) {})));
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), Backend.reviewEmail);
+    await tester.tap(find.text('Send code'));
+    await tester.pump();
+
+    expect(find.text('Enter the password'), findsOneWidget);
+    expect(find.text('Enter the code'), findsNothing);
+    // Back to the email step.
+    await tester.tap(find.text('Change'));
+    await tester.pump();
+    expect(find.text('Welcome'), findsOneWidget);
+  });
+
   testWidgets('a build without Supabase settings opens straight to home',
       (tester) async {
     GoogleFonts.config.allowRuntimeFetching = false;

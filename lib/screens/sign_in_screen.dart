@@ -32,6 +32,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   Timer? _resendTimer;
 
   // Phone first when available: most farmers have a phone number, fewer
@@ -40,6 +41,8 @@ class _SignInScreenState extends State<SignInScreen> {
   // Where the code was sent (+256... or an email); null while entering it.
   String? _sentTo;
   int _resendIn = 0;
+  // Google Play's reviewer account: a password instead of an emailed code.
+  bool _reviewer = false;
   bool _busy = false;
   String? _errorKey;
 
@@ -49,6 +52,7 @@ class _SignInScreenState extends State<SignInScreen> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _codeCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -82,6 +86,16 @@ class _SignInScreenState extends State<SignInScreen> {
         setState(() => _errorKey = 'errEmail');
         return;
       }
+      if (Backend.isReviewEmail(to)) {
+        // No email is sent: ask for the reviewer password instead.
+        setState(() {
+          _sentTo = to;
+          _reviewer = true;
+          _errorKey = null;
+          _passwordCtrl.clear();
+        });
+        return;
+      }
     }
     await _run(() async {
       if (_byPhone) {
@@ -110,6 +124,14 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _verify() async {
     if (_busy) return; // the 6th digit and Enter can both submit
+    if (_reviewer) {
+      await _run(
+          () => Backend.signInWithPassword(_sentTo!, _passwordCtrl.text));
+      if (mounted && _errorKey == 'errCode') {
+        setState(() => _errorKey = 'errPassword');
+      }
+      return;
+    }
     final code = _codeCtrl.text.replaceAll(RegExp(r'\D'), '');
     if (code.length < 6) {
       setState(() => _errorKey = 'errCode');
@@ -135,6 +157,7 @@ class _SignInScreenState extends State<SignInScreen> {
     _resendTimer?.cancel();
     setState(() {
       _sentTo = null;
+      _reviewer = false;
       _errorKey = null;
       _resendIn = 0;
     });
@@ -179,7 +202,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           loading: _busy,
                           onTap: sent ? _verify : _sendCode,
                         ),
-                        if (sent) _resendRow(),
+                        if (sent && !_reviewer) _resendRow(),
                         const Spacer(),
                         const SizedBox(height: 32),
                         _footer(),
@@ -247,6 +270,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   /// Step 2: the 6-digit code. Signs in by itself once 6 digits are in.
   List<Widget> _codeStep() {
+    if (_reviewer) return _passwordStep();
     final to = _byPhone ? Backend.formatPhone(_sentTo!) : _sentTo!;
     return [
       Text(t.get('codeTitle'), style: AppText.display(30)),
@@ -278,6 +302,38 @@ class _SignInScreenState extends State<SignInScreen> {
       ),
     ];
   }
+
+  /// Step 2 for the reviewer account only: its password.
+  List<Widget> _passwordStep() => [
+        Text(t.get('passwordTitle'), style: AppText.display(30)),
+        const SizedBox(height: 8),
+        Text.rich(TextSpan(
+          text: t.get('passwordSub').replaceAll('{to}', _sentTo!),
+          style: AppText.body(15.5, color: AppColors.textDim),
+          children: [
+            const TextSpan(text: '  '),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: _InlineLink(
+                label: t.get('change'),
+                onTap: _busy ? null : _changeAddress,
+              ),
+            ),
+          ],
+        )),
+        const SizedBox(height: 28),
+        AppTextField(
+          key: const ValueKey('password'),
+          controller: _passwordCtrl,
+          hint: t.get('password'),
+          icon: Icons.lock_outline,
+          obscure: true,
+          autofocus: true,
+          autofillHints: const [AutofillHints.password],
+          onSubmitted: (_) => _verify(),
+        ),
+      ];
 
   Widget _resendRow() => Padding(
         padding: const EdgeInsets.only(top: 14),

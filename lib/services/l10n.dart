@@ -140,6 +140,10 @@ class L10n {
       'signInSubEmail':
           'Sign in with your email. We will send you a 6\u2011digit code, no password needed.',
       'codeTitle': 'Enter the code',
+      'passwordTitle': 'Enter the password',
+      'passwordSub': 'Reviewer account {to}.',
+      'password': 'Password',
+      'errPassword': 'That password is not right. Try again.',
       'codeSentSms': 'We sent a 6\u2011digit code by SMS to {to}.',
       'codeSentEmail':
           'We sent a 6\u2011digit code to {to}. Check your spam folder too.',
@@ -348,6 +352,10 @@ class L10n {
       'signInSubEmail':
           'Yingira ne email yo. Tujja kukuweereza koodi ya nnamba 6, tekyetaagisa kigambo kya kyama.',
       'codeTitle': 'Wandiika koodi',
+      'passwordTitle': "Wandiika ekigambo eky'ekyama",
+      'passwordSub': 'Akawunta y\'omukebezi {to}.',
+      'password': "Ekigambo eky'ekyama",
+      'errPassword': "Ekigambo eky'ekyama si kituufu. Ddamu.",
       'codeSentSms': 'Tuweerezza koodi ya nnamba 6 mu SMS ku {to}.',
       'codeSentEmail':
           'Tuweerezza koodi ya nnamba 6 ku {to}. Kebera ne mu spam.',

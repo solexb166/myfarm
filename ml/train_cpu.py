@@ -46,6 +46,9 @@ def parse_args():
                    help='first EfficientNet layer to fine-tune')
     p.add_argument('--batch', type=int, default=32)
     p.add_argument('--old-model', help='current .tflite to compare against')
+    p.add_argument('--max-train-per-class', type=int, default=0,
+                   help='use at most this many training photos per class '
+                        '(0 = all); keeps CPU training time reasonable')
     return p.parse_args()
 
 
@@ -119,6 +122,14 @@ def main():
         tr, va, te = stratified_split(list_split(a.data, folders),
                                       (0.7, 0.15, 0.15), rng)
         items = {'train': tr, 'validation': va, 'test': te}
+
+    if a.max_train_per_class:
+        kept = []
+        for idx in range(len(keys)):
+            group = [it for it in items['train'] if it[1] == idx]
+            rng.shuffle(group)
+            kept += group[:a.max_train_per_class]
+        items['train'] = kept
 
     data = {}
     for s, it in items.items():

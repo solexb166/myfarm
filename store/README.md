@@ -21,10 +21,8 @@ Follow `supabase/README.md` → Setup. In short:
    `npx supabase db push`.
 3. Turn on the **Email** provider, connect an email sender (SMTP) and set
    the email code templates.
-4. Deploy the account-deletion function:
-   ```bash
-   npx supabase functions deploy delete-account --no-verify-jwt
-   ```
+4. Account deletion needs nothing extra: `delete_my_account()` is part of
+   the database setup.
 5. **Later, for phone sign-in** (off for now): set up Africa's Talking and
    the Send SMS hook (section "Phone sign-in" in `supabase/README.md`),
    then add `PHONE_SIGN_IN` = `true` to the `supabase` group in Codemagic.
@@ -34,9 +32,8 @@ Follow `supabase/README.md` → Setup. In short:
 
 ## 2. Privacy pages on GitHub Pages (15 minutes)
 
-1. Replace `REPLACE-WITH-YOUR-EMAIL@example.com` in `docs/index.html`,
-   `docs/privacy.html` and `docs/delete-account.html` with your support email.
-   Farmers and Google will use it.
+1. The pages show the support email **myfarm.afrotym@gmail.com**. Farmers
+   and Google use it, so check that inbox regularly.
 2. Merge this branch into `main`.
 3. GitHub → repository **Settings → Pages** → Source: *Deploy from a branch*
    → Branch `main`, folder `/docs` → Save.
@@ -68,7 +65,10 @@ App settings → Environment variables. Mark every value **Secure**.
 | `release` | `CM_KEYSTORE` (contents of the `.b64` file), `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS` (`upload`), `CM_KEY_PASSWORD` |
 | `supabase` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` |
 
-Start the **MY FARM Google Play Release** (`play-release`) workflow. It stops
+Start the **MY FARM Google Play Release** (`play-release`) workflow. It also
+checks that every native library supports 16 KB memory pages, which Google
+Play requires (the app uses LiteRT, the successor of TensorFlow Lite, for
+this; override its version with a `LITERT_VERSION` variable). It stops
 with a clear message if a variable is missing, checks the build is
 release-signed and targets a recent Android version, then builds
 `app-release.aab`. Each build gets a higher version code automatically. For

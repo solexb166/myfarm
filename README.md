@@ -11,8 +11,8 @@ The app bundles a small **TensorFlow Lite** model per crop, trained on real
 crop-disease images (see the `myfarm_ml` training pipeline). When a farmer
 photographs a leaf:
 
-1. They pick the crop. Cassava, beans and matooke have bundled models; maize
-   shows as "coming soon" until its model is added.
+1. They pick the crop: cassava, maize, beans or matooke, each with a
+   bundled model. A crop whose model is missing shows as "coming soon".
 2. The photo is classified **on the device** by that crop's `.tflite` model — no
    internet needed.
 3. The predicted disease is matched to a bundled **treatment knowledge base**
@@ -39,12 +39,13 @@ treatments are described in [`supabase/README.md`](supabase/README.md).
 There is one Colab notebook per crop in `ml/`. Each uses transfer learning
 (EfficientNetB0) and exports a quantised TFLite model whose class labels
 **exactly match the keys in `treatment_db.dart`**, so every prediction maps
-straight to the right treatment text.
+straight to the right treatment text. Results and data sources for the current
+models: [`ml/MODELS.md`](ml/MODELS.md).
 
 | Crop | Notebook | Dataset | Classes |
 |------|----------|---------|---------|
-| Cassava | `cassava_training_colab.ipynb` | Makerere / NaCRRI (Kaggle), 21,367 Ugandan field photos | mosaic, brown streak, bacterial blight, green mottle, healthy |
-| Maize | `maize_training_colab.ipynb` | Tanzania maize set (Mduma et al.), ~18k photos | MLN, MSV, healthy |
+| Cassava | `train_cpu.py` (was `cassava_training_colab.ipynb`) | Makerere / NaCRRI, Ugandan field photos | mosaic, brown streak, bacterial blight, green mottle, healthy |
+| Maize | `train_cpu.py` + `prepare_maize.py` | Tanzania (NM-AIST) + Uganda (Makerere) maize sets, plus PLANTHEAD photos | lethal necrosis, streak virus, northern leaf blight, healthy |
 | Beans | `beans_training_colab.ipynb` | ibean (Makerere AI Lab) | angular leaf spot, bean rust, healthy |
 | Matooke | `matooke_training_colab.ipynb` | Tanzania banana leaves & stems set, ~16k photos | black sigatoka, fusarium wilt race 1, healthy |
 

@@ -46,6 +46,14 @@ def parse_args():
                    help='first EfficientNet layer to fine-tune')
     p.add_argument('--batch', type=int, default=32)
     p.add_argument('--old-model', help='current .tflite to compare against')
+    p.add_argument('--extra',
+                   help='a second photo collection (same class folders), '
+                        'e.g. from another project: part goes into training, '
+                        'the rest is a separate "external" test')
+    p.add_argument('--extra-test-share', type=float, default=0.5)
+    p.add_argument('--extra-repeat', type=int, default=8,
+                   help='times each extra training photo is repeated, so a '
+                        'small collection still counts')
     p.add_argument('--max-train-per-class', type=int, default=0,
                    help='use at most this many training photos per class '
                         '(0 = all); keeps CPU training time reasonable')
@@ -130,6 +138,13 @@ def main():
             rng.shuffle(group)
             kept += group[:a.max_train_per_class]
         items['train'] = kept
+
+    if a.extra:
+        rest, held = stratified_split(
+            list_split(a.extra, folders),
+            (1 - a.extra_test_share, a.extra_test_share), rng)
+        items['external'] = held
+        items['train'] = items['train'] + rest * a.extra_repeat
 
     data = {}
     for s, it in items.items():
@@ -228,9 +243,18 @@ def main():
     if a.old_model:
         report['old'] = evaluate(a.old_model, xte, yte, keys, a.out,
                                  f'{a.crop}_old_confusion_matrix.png')
+    if 'external' in data:
+        report['external'] = evaluate(
+            tfl_path, *data['external'], keys, a.out,
+            f'{a.crop}_external_confusion_matrix.png')
+        if a.old_model:
+            report['old_external'] = evaluate(
+                a.old_model, *data['external'], keys, a.out,
+                f'{a.crop}_old_external_confusion_matrix.png')
     with open(os.path.join(a.out, 'report.json'), 'w') as f:
         json.dump(report, f, indent=1, default=float)
-    print(json.dumps({k: report[k] for k in ('new', 'old') if k in report},
+    print(json.dumps({k: report[k] for k in ('new', 'old', 'external',
+                                             'old_external') if k in report},
                      indent=1, default=float))
 
 

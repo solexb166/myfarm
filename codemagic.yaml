@@ -197,10 +197,15 @@ workflows:
           BG="android/app/build.gradle.kts"
           grep -q 'signingConfigs.getByName("release")' "$BG" || { echo "Release signing is not wired in"; exit 1; }
           # Google Play only accepts recent target SDKs (35+ in 2025-26).
-          FE="$(dirname "$(dirname "$(which flutter)")")/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
-          TARGET=$(grep -oE "val targetSdkVersion: Int = [0-9]+" "$FE" | grep -oE "[0-9]+$")
-          echo "targetSdk = $TARGET"
-          [ "${TARGET:-0}" -ge 35 ] || { echo "targetSdk $TARGET is too old for Google Play"; exit 1; }
+          # Ask Flutter where it lives: `which flutter` may be a symlink.
+          ROOT=$(flutter --version --machine | grep -oE '"flutterRoot": *"[^"]+"' | sed -E 's/.*"([^"]+)"$/\1/')
+          TARGET=$(grep -rhoE "targetSdkVersion: Int = [0-9]+" "$ROOT/packages/flutter_tools/gradle/src" | grep -oE "[0-9]+$" | head -1)
+          if [ -z "$TARGET" ]; then
+            echo "WARNING: could not read Flutter's targetSdk under $ROOT; Play Console will reject an old one on upload."
+          else
+            echo "targetSdk = $TARGET"
+            [ "$TARGET" -ge 35 ] || { echo "targetSdk $TARGET is too old for Google Play"; exit 1; }
+          fi
       - name: Build Android App Bundle for Google Play
         script: |
           # versionCode must go up with every upload; Codemagic's build

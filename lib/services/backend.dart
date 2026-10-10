@@ -218,20 +218,30 @@ class Backend {
 
   /// Permanently delete the farmer's account and everything in it (photos,
   /// scans, plan, profile, login), then clear it from this phone. Needs
-  /// internet. See supabase/functions/delete-account.
+  /// internet. Photos go first, through Storage; then delete_my_account()
+  /// (supabase/migrations/..._delete_account.sql) removes the login, and the
+  /// rest of their rows with it.
   static Future<void> deleteAccount() async {
-    if (account == null) return;
+    final uid = account?.id;
+    if (uid == null) return;
     try {
       // After a long time offline the access token has expired, and the
-      // function would refuse it.
+      // server would refuse it.
       if (_db.auth.currentSession?.isExpired ?? false) {
         await _db.auth.refreshSession().timeout(_timeout);
       }
-      await _db.functions.invoke('delete-account').timeout(_timeout);
-    } on FunctionException catch (e) {
-      debugPrint('Account deletion failed: ${e.status} ${e.details}');
-      throw AccountError.failed;
+      final photos = _db.storage.from(_photoBucket);
+      for (var round = 0; round < 1000; round++) {
+        final files = await photos
+            .list(path: uid, searchOptions: const SearchOptions(limit: 100))
+            .timeout(_timeout);
+        if (files.isEmpty) break;
+        await photos.remove([for (final f in files) '$uid/${f.name}']).timeout(
+            _timeout);
+      }
+      await _db.rpc('delete_my_account').timeout(_timeout);
     } catch (e) {
+      debugPrint('Account deletion failed: $e');
       throw AccountError.from(e);
     }
     // The login no longer exists, so this only clears the phone.
@@ -514,7 +524,7 @@ enum AccountError implements Exception {
       if (e.code == 'otp_expired' || e.statusCode == '403') return wrongCode;
       return failed;
     }
-    if (e is PostgrestException) return failed;
+    if (e is PostgrestException || e is StorageException) return failed;
     // SocketException, TimeoutException, http ClientException, ...
     return offline;
   }

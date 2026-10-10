@@ -42,7 +42,7 @@ definitions:
       name: Generate app launcher icon (leaf logo)
       script: flutter pub run flutter_launcher_icons
     - &patch_tflite
-      name: Patch tflite_flutter (JVM 17 + compileSdk 36)
+      name: Patch tflite_flutter (JVM 17, compileSdk 36, LiteRT runtime)
       script: |
         PLUGIN=$(find "$HOME/.pub-cache" -type d -name "tflite_flutter-*" | head -1)
         GF="$PLUGIN/android/build.gradle"
@@ -52,12 +52,16 @@ definitions:
         perl -0777 -i -pe 's/(compileOptions\s*\{[^}]*\})/$1\n    kotlinOptions {\n        jvmTarget = "17"\n    }/s unless /kotlinOptions/' "$GF"
         # Bump the plugin compileSdkVersion 31 -> 36 (deps require >=33)
         perl -i -pe 's/compileSdkVersion\s+31/compileSdkVersion 36/g' "$GF"
-        # Bump the bundled TensorFlow Lite runtime so it understands ops from
-        # newer TF (our Colab-exported EfficientNet models). 2.11 is too old.
-        # Bump bundled TensorFlow Lite native runtime to match the TF version
-        # used to train/export the models in Colab (fixes "Unable to create
-        # interpreter" / "Didn't find op for builtin opcode" errors).
-        perl -i -pe 's/def tflite_version = "2\.11\.0"/def tflite_version = "2.16.1"/' "$GF"
+        # Native runtime: LiteRT, the successor of TensorFlow Lite (same
+        # org.tensorflow.lite API and libtensorflowlite_jni.so, newer ops for
+        # our Colab-exported models). TensorFlow Lite 2.x's native libraries
+        # aren't 16 KB page aligned, which Google Play requires; LiteRT's are.
+        # The app doesn't use the GPU delegate, so that library is dropped.
+        # Override with a LITERT_VERSION environment variable if needed.
+        LITERT="${LITERT_VERSION:-1.4.0}"
+        perl -i -pe 's/^\s*implementation\("org\.tensorflow:tensorflow-lite:\$\{tflite_version\}"\)/    implementation("com.google.ai.edge.litert:litert:'"$LITERT"'")/' "$GF"
+        perl -i -ne 'print unless /tensorflow-lite-gpu/' "$GF"
+        grep -q "com.google.ai.edge.litert:litert:$LITERT" "$GF" || { echo "LiteRT patch failed"; exit 1; }
         echo "=== PATCHED tflite build.gradle ==="; cat "$GF"
     - &fix_tf_namespace
       name: Fix TensorFlow namespace conflict
@@ -133,6 +137,10 @@ workflows:
             --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}" \
             --dart-define=PHONE_SIGN_IN="${PHONE_SIGN_IN:-false}"
+      - name: Check 16 KB page support (warning only here)
+        script: |
+          python3 tool/check_16kb.py build/app/outputs/bundle/release/app-release.aab \
+            || echo "WARNING: Google Play would reject this build (see above)."
       - name: Build APK (for direct sharing)
         script: |
           flutter build apk --release \
@@ -202,6 +210,8 @@ workflows:
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=PHONE_SIGN_IN="${PHONE_SIGN_IN:-false}"
+      - name: Check 16 KB page support (Google Play requirement)
+        script: python3 tool/check_16kb.py build/app/outputs/bundle/release/app-release.aab
     artifacts:
       - build/**/outputs/**/*.aab
     # Upload straight to Play's internal testing track. Needs a Google Cloud

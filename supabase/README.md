@@ -40,10 +40,10 @@ separate accounts.
   wrong account.
 - **Builds without Supabase settings** have no accounts and open straight to
   the home screen, so diagnosis is never blocked by a missing backend.
-- **Deleting the account** (Account → Privacy → Delete account) calls the
-  `delete-account` function, which removes the farmer's photos and then the
-  login; scans, plan and profile are deleted with it. Google Play requires
-  this.
+- **Deleting the account** (Account → Privacy → Delete account) removes
+  the farmer's photos from storage, then calls `delete_my_account()`, which
+  deletes the login; scans, plan and profile are deleted with it. Google
+  Play requires this. Nothing to deploy: it is part of the database setup.
 
 ## Phone sign-in (Africa's Talking)
 
@@ -122,6 +122,7 @@ boundaries (e.g. the OCHA COD-AB for Uganda) and rerun the script.
 | `sms_log` | Sign-in SMS sent in the last 7 days, for the limits. Only the SMS hook can use it |
 | `area_diseases()`, `area_farmers()` | Diseases near you: totals per district, 3-farmer minimum |
 | `sms_allow()` | Counts an SMS against the limits; called by the SMS hook only |
+| `delete_my_account()` | Deletes the signed-in farmer's login and, through it, their rows (the app removes their photos first) |
 | `disease_counts` | View: scans per disease per week, for analysis in the dashboard |
 | `scan-photos` | Private storage bucket. Each user's photos are in a `<user id>/` folder |
 
@@ -194,12 +195,8 @@ boundaries (e.g. the OCHA COD-AB for Uganda) and rerun the script.
       ```
    5. Raise **Authentication → Rate Limits → SMS** to suit (it is a
       project-wide hourly limit).
-9. **Account deletion:**
-   `npx supabase functions deploy delete-account --no-verify-jwt`
-   (it checks the farmer's login itself).
-
-Test the functions locally with
-`deno test supabase/functions/tests` (no Supabase or SMS needed).
+Test the SMS hook locally with `deno test supabase/functions/tests` (no
+Supabase or SMS needed).
 
 ## Editing treatment advice
 

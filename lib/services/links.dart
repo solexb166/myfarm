@@ -11,6 +11,10 @@ class Links {
   static const privacyPolicy = '$_base/privacy.html';
   static const deleteAccount = '$_base/delete-account.html';
 
+  /// Afrotym, who build MY FARM, and the support inbox.
+  static const afrotym = 'https://afrotym.co';
+  static const supportEmail = 'myfarmsupportteam@gmail.com';
+
   /// Opens [url] in the browser. False if there's no browser to open it.
   static Future<bool> open(String url) async {
     try {

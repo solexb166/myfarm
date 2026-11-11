@@ -7,6 +7,9 @@ import '../services/l10n.dart';
 import '../services/links.dart';
 import '../services/storage.dart';
 import '../widgets/common.dart';
+import '../services/languages.dart';
+import '../widgets/language_picker.dart';
+import 'about_screen.dart';
 import 'location_screens.dart';
 import 'sign_in_screen.dart' show accountErrorKey;
 
@@ -15,7 +18,8 @@ import 'sign_in_screen.dart' show accountErrorKey;
 /// (Signing in happens on [SignInScreen], before the app opens.)
 class AccountScreen extends StatefulWidget {
   final String lang;
-  const AccountScreen({super.key, required this.lang});
+  final ValueChanged<String> onLang;
+  const AccountScreen({super.key, required this.lang, required this.onLang});
 
   @override
   State<AccountScreen> createState() => _AccountScreenState();
@@ -30,7 +34,6 @@ class _AccountScreenState extends State<AccountScreen> {
   String _savedName = '';
   LocationMode? _locMode;
   String? _homeArea; // 'Mbale · Bufumbo'
-  bool _nameSaved = false;
   int _pending = 0;
   bool _syncing = false;
 
@@ -83,51 +86,8 @@ class _AccountScreenState extends State<AccountScreen> {
     await _run(() async {
       await Backend.saveDisplayName(name);
       if (!mounted) return;
-      setState(() {
-        _savedName = name;
-        _nameSaved = true;
-      });
+      setState(() => _savedName = name);
     });
-  }
-
-  Widget _locationCard() {
-    final (icon, key) = switch (_locMode) {
-      LocationMode.gps => (Icons.my_location, 'locStateGps'),
-      LocationMode.manual => (Icons.map_outlined, 'locStateManual'),
-      LocationMode.none => (Icons.location_off_outlined, 'locStateNone'),
-      null => (Icons.location_searching, 'locNotSet'),
-    };
-    return _Card(
-      child: Row(children: [
-        Icon(icon, size: 22, color: AppColors.textDim),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(t.get(key),
-                  style: AppText.body(15.5, weight: FontWeight.w600)),
-              if (_homeArea != null && _locMode != LocationMode.none)
-                Text('${t.get('homeArea')}: $_homeArea',
-                    style: AppText.body(13.5, color: AppColors.textDim)),
-            ],
-          ),
-        ),
-        TextButton(
-          onPressed: () async {
-            await Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => LocationConsentScreen(lang: widget.lang)));
-            Backend.sync();
-            _refresh();
-          },
-          child: Text(t.get('change'),
-              style: AppText.body(14.5,
-                  weight: FontWeight.w700, color: AppColors.primary)),
-        ),
-      ]),
-    );
   }
 
   Future<void> _backUpNow() async {
@@ -230,31 +190,74 @@ class _AccountScreenState extends State<AccountScreen> {
             Text(t.get('noBrowser').replaceAll('{url}', Links.privacyPolicy))));
   }
 
-  Widget _privacyCard() {
-    return _Card(
-      padding: EdgeInsets.zero,
-      child: Column(children: [
-        _LinkRow(
-          icon: Icons.privacy_tip_outlined,
-          title: t.get('privacyPolicy'),
-          trailing: Icons.open_in_new,
-          onTap: _openPrivacyPolicy,
+  Future<void> _changeLocation() async {
+    await Navigator.push(context,
+        MaterialPageRoute(builder: (_) => LocationConsentScreen(lang: widget.lang)));
+    Backend.sync();
+    _refresh();
+  }
+
+  Future<void> _changeLanguage() async {
+    final picked = await showLanguageSheet(context, widget.lang);
+    if (picked != null && picked != widget.lang) widget.onLang(picked);
+  }
+
+  /// Bottom sheet to change the farmer's name.
+  Future<void> _editName() async {
+    _nameCtrl.text = _savedName;
+    final save = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            16, 0, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t.get('editName'),
+                style: AppText.display(20, weight: FontWeight.w700)),
+            const SizedBox(height: 14),
+            AppTextField(
+              controller: _nameCtrl,
+              hint: t.get('namePh'),
+              icon: Icons.badge_outlined,
+              autofocus: true,
+              autofillHints: const [AutofillHints.name],
+              onSubmitted: (_) => Navigator.pop(ctx, true),
+            ),
+            const SizedBox(height: 14),
+            BigButton(
+              label: t.get('save'),
+              icon: Icons.check,
+              onTap: () => Navigator.pop(ctx, true),
+            ),
+          ],
         ),
-        const Divider(height: 1),
-        _LinkRow(
-          icon: Icons.delete_outline,
-          title: t.get('deleteAccount'),
-          sub: t.get('deleteAccountSub'),
-          color: AppColors.danger,
-          onTap: _busy || _syncing ? null : _deleteAccount,
-        ),
-      ]),
+      ),
     );
+    if (save == true && _nameCtrl.text.trim() != _savedName) {
+      await _saveName();
+      if (mounted && _error == null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(t.get('saved'))));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final account = Backend.account;
+    final signedInAs = account == null ? '' : Backend.accountLabel(account);
+    final (locIcon, locKey) = switch (_locMode) {
+      LocationMode.gps => (Icons.my_location, 'locStateGps'),
+      LocationMode.manual => (Icons.map_outlined, 'locStateManual'),
+      LocationMode.none => (Icons.location_off_outlined, 'locStateNone'),
+      null => (Icons.location_searching, 'locNotSet'),
+    };
+    final idle = !_busy && !_syncing;
     return Scaffold(
       body: SafeArea(
         child: Column(children: [
@@ -263,243 +266,135 @@ class _AccountScreenState extends State<AccountScreen> {
             const LinearProgressIndicator(
                 minHeight: 2, color: AppColors.primary),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
-              child: _buildAccount(
-                  account == null ? '' : Backend.accountLabel(account)),
-            ),
-          ),
-          // Sign out stays at the bottom of the screen, apart from the
-          // settings above it.
-          Container(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.border)),
-            ),
-            child: _OutlineButton(
-              icon: Icons.logout,
-              label: t.get('signOut'),
-              color: AppColors.rust,
-              onTap: _busy || _syncing ? null : _signOut,
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  // ---------- SIGNED IN ----------
-  Widget _buildAccount(String signedInAs) {
-    final nameChanged = _nameCtrl.text.trim() != _savedName;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Card(
-          child: Row(children: [
-            const IconTile(icon: Icons.person_outline, size: 48),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _savedName.isEmpty ? t.get('addName') : _savedName,
-                    style: AppText.display(19, weight: FontWeight.w700),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Text('${t.get('signedInAs')} $signedInAs',
-                      style: AppText.body(13.5, color: AppColors.creamDim),
-                      overflow: TextOverflow.ellipsis),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              children: [
+                _profileCard(signedInAs),
+                if (_error != null) ...[
+                  const SizedBox(height: 12),
+                  Notice(icon: Icons.error_outline, text: _error!),
                 ],
-              ),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 22),
-        FieldLabel(t.get('yourName')),
-        AppTextField(
-          controller: _nameCtrl,
-          hint: t.get('namePh'),
-          icon: Icons.badge_outlined,
-          autofillHints: const [AutofillHints.name],
-          onChanged: (_) => setState(() => _nameSaved = false),
-          onSubmitted: (_) => nameChanged ? _saveName() : null,
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 12),
-          Notice(icon: Icons.error_outline, text: _error!),
-        ] else if (_nameSaved) ...[
-          const SizedBox(height: 12),
-          Notice(
-              icon: Icons.check_circle_outline,
-              color: AppColors.leaf,
-              text: t.get('saved')),
-        ],
-        if (nameChanged) ...[
-          const SizedBox(height: 12),
-          BigButton(
-            label: t.get('save'),
-            icon: Icons.check,
-            loading: _busy,
-            color: AppColors.gold,
-            onTap: _saveName,
-          ),
-        ],
-        const SizedBox(height: 26),
-        FieldLabel(t.get('backup')),
-        _Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Icon(
-                  _pending == 0
-                      ? Icons.cloud_done_outlined
-                      : Icons.cloud_upload_outlined,
-                  size: 24,
-                  color: _pending == 0 ? AppColors.leaf : AppColors.gold,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _pending == 0
+                SettingsHeader(t.get('settings')),
+                SettingsGroup(children: [
+                  SettingsRow.icon(Icons.language,
+                      title: t.get('language'),
+                      value: Languages.of(widget.lang).name,
+                      onTap: _changeLanguage),
+                  SettingsRow.icon(locIcon,
+                      title: t.get(locKey),
+                      sub: _homeArea != null && _locMode != LocationMode.none
+                          ? _homeArea
+                          : null,
+                      onTap: _changeLocation),
+                  SettingsRow(
+                    leading: _syncing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.primary))
+                        : Icon(
+                            _pending == 0
+                                ? Icons.cloud_done_outlined
+                                : Icons.cloud_upload_outlined,
+                            size: 22,
+                            color: _pending == 0
+                                ? AppColors.primary
+                                : AppColors.accent),
+                    title: _pending == 0
                         ? t.get('syncAll')
                         : t
                             .get(_pending == 1
                                 ? 'syncPendingOne'
                                 : 'syncPending')
                             .replaceAll('{n}', '$_pending'),
-                    style: AppText.body(15.5, weight: FontWeight.w600),
+                    sub: _pending == 0 ? null : t.get('syncNow'),
+                    trailing: _pending == 0 ? null : Icons.sync,
+                    onTap: _pending == 0 || _syncing ? null : _backUpNow,
                   ),
-                ),
-              ]),
-              if (_pending > 0) ...[
-                const SizedBox(height: 6),
-                Padding(
-                  padding: const EdgeInsets.only(left: 36),
-                  child: Text(t.get('syncPendingSub'),
-                      style: AppText.body(13.5, color: AppColors.creamDim)),
-                ),
-                const SizedBox(height: 14),
-                BigButton(
-                  label: t.get('syncNow'),
-                  icon: Icons.sync,
-                  loading: _syncing,
-                  onTap: _backUpNow,
-                ),
+                ]),
+                SettingsHeader(t.get('privacy')),
+                SettingsGroup(children: [
+                  SettingsRow.icon(Icons.privacy_tip_outlined,
+                      title: t.get('privacyPolicy'),
+                      trailing: Icons.open_in_new,
+                      onTap: _openPrivacyPolicy),
+                  SettingsRow.icon(Icons.delete_outline,
+                      title: t.get('deleteAccount'),
+                      color: AppColors.danger,
+                      onTap: idle ? _deleteAccount : null),
+                ]),
+                SettingsHeader(t.get('about')),
+                SettingsGroup(children: [
+                  SettingsRow(
+                    leading: Image.asset('assets/brand/afrotym_mark.png',
+                        width: 24, height: 24),
+                    title: t.get('builtBy'),
+                    sub: 'afrotym.co',
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => AboutScreen(lang: widget.lang))),
+                  ),
+                ]),
+                const SizedBox(height: 20),
+                SettingsGroup(children: [
+                  SettingsRow.icon(Icons.logout,
+                      title: t.get('signOut'),
+                      color: AppColors.danger,
+                      trailing: null,
+                      onTap: idle ? _signOut : null),
+                ]),
               ],
-            ],
+            ),
           ),
-        ),
-        const SizedBox(height: 26),
-        FieldLabel(t.get('location')),
-        _locationCard(),
-        const SizedBox(height: 26),
-        FieldLabel(t.get('privacy')),
-        _privacyCard(),
-      ],
-    );
-  }
-}
-
-class _Card extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets padding;
-  const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: padding,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: child,
-      );
-}
-
-class _OutlineButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  const _OutlineButton(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = onTap == null ? AppColors.creamDim : color;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: c.withValues(alpha: 0.6)),
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 19, color: c),
-          const SizedBox(width: 9),
-          Text(label,
-              style: AppText.display(16,
-                  weight: FontWeight.w700, color: c, spacing: 0)),
         ]),
       ),
     );
   }
-}
 
-/// Tappable row inside a card: icon, title, optional subtitle.
-class _LinkRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? sub;
-  final IconData trailing;
-  final Color color;
-  final VoidCallback? onTap;
-  const _LinkRow({
-    required this.icon,
-    required this.title,
-    this.sub,
-    this.trailing = Icons.chevron_right,
-    this.color = AppColors.text,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = onTap == null ? AppColors.textDim : color;
+  /// Name and sign-in address; tap to change the name.
+  Widget _profileCard(String signedInAs) {
+    final name = _savedName.trim();
     return Material(
-      color: Colors.transparent,
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        onTap: _busy ? null : _editName,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          padding: const EdgeInsets.all(14),
           child: Row(children: [
-            Icon(icon, size: 22, color: c),
-            const SizedBox(width: 12),
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: AppColors.primary,
+              child: name.isEmpty
+                  ? const Icon(Icons.person_outline,
+                      color: AppColors.onPrimary)
+                  : Text(name.characters.first.toUpperCase(),
+                      style: AppText.display(22,
+                          weight: FontWeight.w700,
+                          color: AppColors.onPrimary)),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: AppText.body(15.5,
-                          weight: FontWeight.w600, color: c)),
-                  if (sub != null)
-                    Text(sub!,
-                        style: AppText.body(13.5, color: AppColors.textDim)),
+                  Text(name.isEmpty ? t.get('addName') : name,
+                      style: AppText.display(18, weight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(signedInAs,
+                      style: AppText.body(13.5, color: AppColors.textDim)),
                 ],
               ),
             ),
-            Icon(trailing, size: 19, color: AppColors.textDim),
+            const Icon(Icons.edit_outlined,
+                size: 20, color: AppColors.textDim),
           ]),
         ),
       ),

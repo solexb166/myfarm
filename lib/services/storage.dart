@@ -33,6 +33,12 @@ class Storage {
     await p.setString(_kLang, lang);
   }
 
+  /// Whether the farmer has picked a language yet (asked on first launch).
+  static Future<bool> hasLang() async {
+    final p = await SharedPreferences.getInstance();
+    return p.containsKey(_kLang);
+  }
+
   // ---- crop plan (single active plan) ----
   // Every local change bumps the plan revision; Backend records the revision
   // it last pushed, so it knows whether the server copy is stale.

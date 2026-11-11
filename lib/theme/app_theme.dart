@@ -91,8 +91,10 @@ ThemeData buildTheme() {
                 : AppColors.textDim,
           )),
       labelTextStyle:
+          // Small enough for five tabs with long Luganda labels.
           WidgetStateProperty.resolveWith((states) => GoogleFonts.inter(
-                fontSize: 12.5,
+                fontSize: 11.5,
+                letterSpacing: -0.1,
                 fontWeight: states.contains(WidgetState.selected)
                     ? FontWeight.w700
                     : FontWeight.w500,

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
@@ -8,9 +9,13 @@ import '../services/inference_service.dart';
 import '../services/l10n.dart';
 import '../services/storage.dart';
 import '../widgets/common.dart';
+import '../widgets/crop_art.dart';
+import '../widgets/language_picker.dart';
+import '../widgets/diagnosis_view.dart' show StatusBadge;
 import 'area_screen.dart';
 import 'diagnose_screen.dart';
 import 'history_screen.dart';
+import 'main_shell.dart' show Tabs;
 
 /// Home tab: the farmer's own dashboard - scan, next task, diseases near
 /// them, last scan and backup status. [onOpenTab] switches the bottom navigation tab.
@@ -32,8 +37,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String? _name;
   CropPlan? _plan;
-  Diagnosis? _lastScan;
-  int _pending = 0;
+  List<Diagnosis> _recent = [];
   District? _area;
   AreaReport? _areaReport;
 
@@ -49,7 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final name = await Storage.getDisplayName();
     final plan = await Storage.getPlan();
     final history = await Storage.getHistory();
-    final pending = await Storage.pendingScanCount();
     final area =
         Backend.enabled ? await Areas.byId(await nearYouDistrict()) : null;
     var report = await Storage.getAreaReport();
@@ -58,8 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _name = name;
       _plan = plan;
-      _lastScan = history.isEmpty ? null : history.first;
-      _pending = pending;
+      _recent = history.take(8).toList();
       _area = area;
       _areaReport = report;
     });
@@ -114,86 +116,80 @@ class _HomeScreenState extends State<HomeScreen> {
           await _load();
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             Row(children: [
-              const IconTile(icon: Icons.eco, size: 36),
-              const SizedBox(width: 10),
-              Text(t.get('appName'), style: AppText.display(18, spacing: 0.2)),
+              const IconTile(icon: Icons.eco, size: 32),
+              const SizedBox(width: 9),
+              Text(t.get('appName'), style: AppText.display(17, spacing: 0.2)),
               const Spacer(),
-              LangToggle(lang: widget.lang, onChange: widget.onLang),
+              LangButton(lang: widget.lang, onChange: widget.onLang),
             ]),
-            const SizedBox(height: 26),
-            Text(_greeting(), style: AppText.display(28)),
-            const SizedBox(height: 6),
-            Text(t.get('homeSub'),
-                style: AppText.body(15, color: AppColors.textDim)),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
+            Text(_greeting(),
+                style: AppText.display(24, weight: FontWeight.w800),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 14),
             _ScanCard(
                 title: t.get('scan'), sub: t.get('scanSub'), onTap: _scan),
-            const SizedBox(height: 26),
-            _SectionHeader(title: t.get('nextTask')),
-            _nextTaskCard(),
-            if (Backend.enabled) ...[
-              const SizedBox(height: 22),
-              _SectionHeader(title: t.get('nearYou')),
-              _nearYouCard(),
-            ],
+            const SizedBox(height: 22),
+            _SectionHeader(title: t.get('today')),
+            _Group(children: [
+              _nextTaskRow(),
+              if (Backend.enabled) _nearYouRow(),
+            ]),
             const SizedBox(height: 22),
             _SectionHeader(
-              title: t.get('lastScan'),
-              action: _lastScan == null ? null : t.get('seeAll'),
-              onAction: () => widget.onOpenTab(2),
+              title: t.get('history'),
+              action: _recent.isEmpty ? null : t.get('seeAll'),
+              onAction: () => widget.onOpenTab(Tabs.scans),
             ),
-            _lastScanCard(),
-            if (Backend.enabled) ...[
-              const SizedBox(height: 22),
-              _backupRow(),
-            ],
+            _recentScans(),
           ],
         ),
       ),
     );
   }
 
-  Widget _nextTaskCard() {
+  Widget _nextTaskRow() {
     final plan = _plan;
     if (plan == null) {
-      return _RowCard(
+      return _Row(
         icon: Icons.calendar_month_outlined,
         iconColor: AppColors.accent,
         iconBg: AppColors.accentSoft,
         title: t.get('planSeason'),
         sub: t.get('planSeasonSub'),
-        onTap: () => widget.onOpenTab(1),
+        onTap: () => widget.onOpenTab(Tabs.calendar),
       );
     }
     final next = plan.tasks.where((task) => !task.done).firstOrNull;
     if (next == null) {
-      return _RowCard(
+      return _Row(
         icon: Icons.task_alt,
         title: t.get('allTasksDone'),
         sub: plan.crop,
-        onTap: () => widget.onOpenTab(1),
+        onTap: () => widget.onOpenTab(Tabs.calendar),
       );
     }
     final date = DateTime.tryParse(next.date);
-    return _RowCard(
+    return _Row(
       icon: taskIcon(next.type),
       title: next.title,
       sub: [
+        t.get('nextTask'),
         if (date != null) DateFormat('d MMM').format(date),
         plan.crop,
-        next.stage,
       ].where((s) => s.isNotEmpty).join('  ·  '),
-      onTap: () => widget.onOpenTab(1),
+      onTap: () => widget.onOpenTab(Tabs.calendar),
     );
   }
 
-  Widget _nearYouCard() {
+  Widget _nearYouRow() {
     final top = _areaReport?.diseases.firstOrNull;
     if (_area == null || top == null) {
-      return _RowCard(
+      return _Row(
         icon: Icons.travel_explore,
         iconColor: AppColors.info,
         iconBg: AppColors.info.withValues(alpha: 0.12),
@@ -204,73 +200,47 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: _openArea,
       );
     }
-    return _RowCard(
+    return _Row(
       icon: Icons.coronavirus_outlined,
       iconColor: AppColors.danger,
       iconBg: AppColors.dangerSoft,
       title:
-          '${InferenceService.prettyLabel(top.label)}  ·  ${InferenceService.cropDisplayName(top.crop, widget.lang)}',
+          '${InferenceService.prettyLabel(top.label)} · ${InferenceService.cropDisplayName(top.crop, widget.lang)}',
       sub:
-          '${t.get('areaFarmers').replaceAll('{n}', '${top.farmers}')}  ·  ${_area!.name}',
+          '${t.get('nearYou')}  ·  ${t.get('areaFarmers').replaceAll('{n}', '${top.farmers}')}  ·  ${_area!.name}',
       onTap: _openArea,
     );
   }
 
-  Widget _lastScanCard() {
-    final d = _lastScan;
-    if (d == null) {
-      return _RowCard(
-        icon: Icons.document_scanner_outlined,
-        iconColor: AppColors.textDim,
-        iconBg: AppColors.surfaceAlt,
-        title: t.get('noScansYet'),
-        sub: t.get('noHistory'),
-      );
-    }
-    final when = DateFormat('d MMM, HH:mm')
-        .format(DateTime.fromMillisecondsSinceEpoch(d.timestamp));
-    return _RowCard(
-      icon: d.healthy ? Icons.check_circle_outline : Icons.coronavirus_outlined,
-      iconColor: d.healthy ? AppColors.primary : AppColors.danger,
-      iconBg: d.healthy ? AppColors.primarySoft : AppColors.dangerSoft,
-      title: d.diagnosis,
-      sub: '${d.crop}  ·  $when',
-      onTap: () async {
-        await Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) =>
-                    DiagnosisDetailScreen(d: d, lang: widget.lang)));
-        _load();
-      },
-    );
+  Future<void> _openScan(Diagnosis d) async {
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => DiagnosisDetailScreen(d: d, lang: widget.lang)));
+    _load();
   }
 
-  Widget _backupRow() {
-    final ok = _pending == 0;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => widget.onOpenTab(3),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          child: Row(children: [
-            Icon(ok ? Icons.cloud_done_outlined : Icons.cloud_upload_outlined,
-                size: 19, color: ok ? AppColors.primary : AppColors.accent),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                ok
-                    ? t.get('syncAll')
-                    : t
-                        .get(_pending == 1 ? 'syncPendingOne' : 'syncPending')
-                        .replaceAll('{n}', '$_pending'),
-                style: AppText.body(13.5, color: AppColors.textDim),
-              ),
-            ),
-          ]),
+  Widget _recentScans() {
+    if (_recent.isEmpty) {
+      return _Group(children: [
+        _Row(
+          icon: Icons.document_scanner_outlined,
+          iconColor: AppColors.textDim,
+          iconBg: AppColors.surfaceAlt,
+          title: t.get('noScansYet'),
+          sub: t.get('noHistory'),
+          onTap: _scan,
         ),
+      ]);
+    }
+    return SizedBox(
+      height: 170,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _recent.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) => _ScanTile(
+            d: _recent[i], lang: widget.lang, onTap: () => _openScan(_recent[i])),
       ),
     );
   }
@@ -297,41 +267,40 @@ class _ScanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.primary,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 22, 16, 22),
+          padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
           child: Row(children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: const BoxDecoration(
-                color: AppColors.onPrimary,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.photo_camera_outlined,
-                  size: 28, color: AppColors.primary),
-            ),
-            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: AppText.display(21,
+                      style: AppText.display(19,
                           weight: FontWeight.w700,
                           color: AppColors.onPrimary,
                           spacing: -0.2)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(sub,
-                      style: AppText.body(14,
+                      style: AppText.body(13.5,
                           color: AppColors.onPrimary.withValues(alpha: 0.88))),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward, color: AppColors.onPrimary),
+            const SizedBox(width: 12),
+            Container(
+              width: 50,
+              height: 50,
+              decoration: const BoxDecoration(
+                color: AppColors.onPrimary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.photo_camera_outlined,
+                  size: 25, color: AppColors.primary),
+            ),
           ]),
         ),
       ),
@@ -347,20 +316,21 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10, left: 2),
+    return SizedBox(
+      height: 34,
       child: Row(children: [
         Expanded(
             child: Text(title,
-                style: AppText.display(17, weight: FontWeight.w700))),
+                style: AppText.display(16, weight: FontWeight.w700))),
         if (action != null)
           TextButton(
             onPressed: onAction,
             style: TextButton.styleFrom(
                 visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 foregroundColor: AppColors.primary),
             child: Text(action!,
-                style: AppText.body(14,
+                style: AppText.body(13.5,
                     weight: FontWeight.w600, color: AppColors.primary)),
           ),
       ]),
@@ -368,15 +338,39 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// White card with an icon tile, title, subtitle and optional tap.
-class _RowCard extends StatelessWidget {
+/// One white card holding several [_Row]s, separated by thin lines.
+class _Group extends StatelessWidget {
+  final List<Widget> children;
+  const _Group({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: Column(children: [
+        for (final (i, c) in children.indexed) ...[
+          if (i > 0) const Divider(height: 1, indent: 64),
+          c,
+        ],
+      ]),
+    );
+  }
+}
+
+/// A row in a [_Group]: icon, title, one line of detail.
+class _Row extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
   final String title;
   final String sub;
   final VoidCallback? onTap;
-  const _RowCard({
+  const _Row({
     required this.icon,
     required this.title,
     required this.sub,
@@ -387,47 +381,100 @@ class _RowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: AppColors.border),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 11, 8, 11),
+        child: Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, size: 21, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: AppText.body(15, weight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 1),
+                Text(sub,
+                    style: AppText.body(13, color: AppColors.textDim),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            const Icon(Icons.chevron_right, color: AppColors.textDim),
+        ]),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(13),
+    );
+  }
+}
+
+/// A recent scan in the sideways list on Home: photo, result, status.
+class _ScanTile extends StatelessWidget {
+  final Diagnosis d;
+  final String lang;
+  final VoidCallback onTap;
+  const _ScanTile({required this.d, required this.lang, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final path = d.imagePath;
+    final photo = path == null ? null : File(path);
+    final cropKey = InferenceService.cropKeyFor(d.crop) ?? '';
+    return SizedBox(
+      width: 160,
+      child: Material(
+        color: AppColors.surface,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 88,
+                width: double.infinity,
+                child: photo != null && photo.existsSync()
+                    ? Image.file(photo, fit: BoxFit.cover)
+                    : CropArt(cropKey: cropKey, size: 88),
               ),
-              child: Icon(icon, size: 23, color: iconColor),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: AppText.body(15.5, weight: FontWeight.w600),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(sub,
-                      style: AppText.body(13.5, color: AppColors.textDim),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                child: Text(d.diagnosis,
+                    style: AppText.body(14, weight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
-            ),
-            if (onTap != null)
-              const Icon(Icons.chevron_right, color: AppColors.textDim),
-          ]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 1, 10, 0),
+                child: Text(
+                    '${InferenceService.cropDisplayName(d.crop, lang)} · ${DateFormat('d MMM').format(DateTime.fromMillisecondsSinceEpoch(d.timestamp))}',
+                    style: AppText.body(12.5, color: AppColors.textDim),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: StatusBadge(healthy: d.healthy, lang: lang, small: true),
+              ),
+            ],
+          ),
         ),
       ),
     );

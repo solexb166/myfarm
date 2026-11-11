@@ -98,106 +98,222 @@ class _DiagnosisViewState extends State<DiagnosisView> {
         .map((c) => widget.lang == 'lg' ? c['luganda']! : c['name']!)
         .firstOrNull;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(children: [
-          TopBar(title: t.get('result'), onBack: widget.onBack),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 32),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (hasPhoto) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: Image.file(photo,
-                              height: 210,
-                              width: double.infinity,
-                              fit: BoxFit.cover),
-                        ),
-                        const SizedBox(height: 18),
-                      ],
-                      StatusBadge(healthy: d.healthy, lang: widget.lang),
-                      const SizedBox(height: 12),
-                      Text(d.diagnosis,
-                          style: AppText.display(30, spacing: -0.8)),
-                      const SizedBox(height: 8),
-                      Row(children: [
-                        CropArt(cropKey: cropKey, size: 26, tile: false),
-                        const SizedBox(width: 8),
-                        Text(crop ?? d.crop,
-                            style: AppText.body(15,
-                                weight: FontWeight.w600,
-                                color: AppColors.textDim)),
-                        if (_district != null) ...[
-                          const SizedBox(width: 14),
-                          const Icon(Icons.place_outlined,
-                              size: 18, color: AppColors.textDim),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              [
-                                _district!.name,
-                                if (d.subcounty != null) d.subcounty!
-                              ].join(', '),
-                              overflow: TextOverflow.ellipsis,
-                              style: AppText.body(15,
-                                  weight: FontWeight.w600,
-                                  color: AppColors.textDim),
-                            ),
-                          ),
-                        ],
-                      ]),
-                      const SizedBox(height: 18),
-                      _ConfidenceCard(pct: d.confidence, t: t),
-                      const SizedBox(height: 12),
-                      _ListenButton(
-                        speaking: _speaking,
-                        label: _speaking ? t.get('stop') : t.get('listen'),
-                        onTap: _toggleSpeak,
-                      ),
-                      const SizedBox(height: 22),
-                      InfoBlock(
-                          icon: Icons.info_outline,
-                          label: t.get('cause'),
-                          text: advice.cause),
-                      if (!d.healthy) ...[
-                        InfoBlock(
-                            icon: Icons.spa_outlined,
-                            label: t.get('organic'),
-                            text: advice.organic,
-                            tint: AppColors.primary),
-                        InfoBlock(
-                            icon: Icons.science_outlined,
-                            label: t.get('chemical'),
-                            text: advice.chemical,
-                            tint: AppColors.accent),
-                      ],
-                      InfoBlock(
-                          icon: Icons.shield_outlined,
-                          label: t.get('prevent'),
-                          text: advice.prevent,
-                          tint: AppColors.info),
-                      const SizedBox(height: 4),
-                      Notice(
-                        icon: Icons.support_agent,
-                        color: AppColors.info,
-                        text: t.get('confirmNote'),
-                      ),
-                      if (widget.footer != null) ...[
-                        const SizedBox(height: 20),
-                        widget.footer!,
-                      ],
-                    ],
-                  ),
+    final place = _district == null
+        ? null
+        : [_district!.name, if (d.subcounty != null) d.subcounty!].join(', ');
+    final back = widget.onBack ??
+        (Navigator.of(context).canPop()
+            ? () => Navigator.of(context).maybePop()
+            : null);
+
+    final sections = <(IconData, Color, String, String)>[
+      (Icons.info_outline, AppColors.textDim, t.get('cause'), advice.cause),
+      if (!d.healthy) ...[
+        (Icons.spa_outlined, AppColors.primary, t.get('organic'),
+            advice.organic),
+        (Icons.science_outlined, AppColors.accent, t.get('chemical'),
+            advice.chemical),
+      ],
+      (Icons.shield_outlined, AppColors.info, t.get('prevent'), advice.prevent),
+    ];
+
+    final details = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            StatusBadge(healthy: d.healthy, lang: widget.lang),
+            const Spacer(),
+            _MatchChip(pct: d.confidence, t: t),
+          ]),
+          const SizedBox(height: 10),
+          Text(d.diagnosis, style: AppText.display(26, spacing: -0.6)),
+          const SizedBox(height: 6),
+          Row(children: [
+            CropArt(cropKey: cropKey, size: 20, tile: false),
+            const SizedBox(width: 6),
+            Text(crop ?? d.crop,
+                style: AppText.body(14,
+                    weight: FontWeight.w600, color: AppColors.textDim)),
+            if (place != null) ...[
+              const SizedBox(width: 12),
+              const Icon(Icons.place_outlined,
+                  size: 16, color: AppColors.textDim),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(place,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.body(14,
+                        weight: FontWeight.w600, color: AppColors.textDim)),
+              ),
+            ],
+          ]),
+          const SizedBox(height: 14),
+          _ListenButton(
+            speaking: _speaking,
+            label: _speaking ? t.get('stop') : t.get('listen'),
+            onTap: _toggleSpeak,
+          ),
+          const SizedBox(height: 14),
+          Material(
+            color: AppColors.surface,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AppColors.border),
+            ),
+            child: Column(children: [
+              for (final (i, (icon, tint, label, text)) in sections.indexed) ...[
+                if (i > 0) const Divider(height: 1),
+                _AdviceSection(
+                  icon: icon,
+                  tint: tint,
+                  label: label,
+                  text: text,
+                  open: i == 0,
                 ),
               ],
+            ]),
+          ),
+          const SizedBox(height: 14),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.support_agent, size: 17, color: AppColors.info),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(t.get('confirmNote'),
+                  style: AppText.body(12.5, color: AppColors.textDim)),
+            ),
+          ]),
+          if (widget.footer != null) ...[
+            const SizedBox(height: 18),
+            widget.footer!,
+          ],
+        ],
+      ),
+    );
+
+    if (!hasPhoto) {
+      return Scaffold(
+        body: SafeArea(
+          child: Column(children: [
+            TopBar(title: t.get('result'), onBack: widget.onBack),
+            Expanded(child: ListView(children: [details])),
+          ]),
+        ),
+      );
+    }
+    final top = MediaQuery.of(context).padding.top;
+    return Scaffold(
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Stack(children: [
+            Image.file(photo,
+                height: 260 + top, width: double.infinity, fit: BoxFit.cover),
+            if (back != null)
+              Positioned(
+                left: 12,
+                top: top + 10,
+                child: Material(
+                  color: AppColors.surface.withValues(alpha: 0.92),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    onPressed: back,
+                    icon: Icon(Icons.arrow_back,
+                        color: AppColors.text,
+                        semanticLabel: MaterialLocalizations.of(context)
+                            .backButtonTooltip),
+                  ),
+                ),
+              ),
+          ]),
+          Transform.translate(
+            offset: const Offset(0, -18),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: details,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One part of the advice that opens and closes when tapped.
+class _AdviceSection extends StatelessWidget {
+  final IconData icon;
+  final Color tint;
+  final String label;
+  final String text;
+  final bool open;
+  const _AdviceSection({
+    required this.icon,
+    required this.tint,
+    required this.label,
+    required this.text,
+    this.open = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        initiallyExpanded: open,
+        tilePadding: const EdgeInsets.fromLTRB(14, 2, 12, 2),
+        childrenPadding: const EdgeInsets.fromLTRB(56, 0, 16, 14),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        iconColor: AppColors.textDim,
+        collapsedIconColor: AppColors.textDim,
+        leading: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: tint.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, size: 17, color: tint),
+        ),
+        title: Text(label, style: AppText.body(15.5, weight: FontWeight.w700)),
+        children: [Text(text, style: AppText.body(14.5))],
+      ),
+    );
+  }
+}
+
+/// How sure the model is, in words first (High / Medium) and the number
+/// second. Deliberately neutral in colour: it is not good or bad news.
+class _MatchChip extends StatelessWidget {
+  final int pct;
+  final L10n t;
+  const _MatchChip({required this.pct, required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    final level = pct >= 80
+        ? t.get('confHigh')
+        : pct >= 65
+            ? t.get('confMedium')
+            : t.get('confLow');
+    return Tooltip(
+      message: t.get('confidence'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.insights, size: 15, color: AppColors.textDim),
+          const SizedBox(width: 5),
+          Text('$level · $pct% ${t.get('match')}',
+              style: AppText.body(12.5, weight: FontWeight.w600)),
         ]),
       ),
     );
@@ -230,60 +346,15 @@ class StatusBadge extends StatelessWidget {
         Icon(healthy ? Icons.check_circle_outline : Icons.warning_amber_rounded,
             size: small ? 13 : 16, color: fg),
         SizedBox(width: small ? 4 : 6),
-        Text(L10n(lang).get(healthy ? 'statusHealthy' : 'statusDisease'),
-            style: AppText.body(small ? 12 : 13.5,
-                weight: FontWeight.w700, color: fg)),
+        Flexible(
+          child: Text(
+              L10n(lang).get(healthy ? 'statusHealthy' : 'statusDisease'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body(small ? 12 : 13.5,
+                  weight: FontWeight.w700, color: fg)),
+        ),
       ]),
-    );
-  }
-}
-
-/// How sure the model is, in words first (High / Medium) and the number
-/// second. Deliberately neutral in colour: it is not good or bad news.
-class _ConfidenceCard extends StatelessWidget {
-  final int pct;
-  final L10n t;
-  const _ConfidenceCard({required this.pct, required this.t});
-
-  @override
-  Widget build(BuildContext context) {
-    final level = pct >= 80
-        ? t.get('confHigh')
-        : pct >= 65
-            ? t.get('confMedium')
-            : t.get('confLow');
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.insights, size: 18, color: AppColors.textDim),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(t.get('confidence'),
-                  style: AppText.body(14, color: AppColors.textDim)),
-            ),
-            Text('$level  ·  $pct%',
-                style: AppText.body(14.5, weight: FontWeight.w700)),
-          ]),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: pct / 100,
-              minHeight: 7,
-              color: AppColors.text,
-              backgroundColor: AppColors.surfaceAlt,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

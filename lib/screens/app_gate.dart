@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/backend.dart';
 import '../services/storage.dart';
+import 'language_screen.dart';
 import 'main_shell.dart';
 import 'sign_in_screen.dart';
 
@@ -13,7 +14,11 @@ import 'sign_in_screen.dart';
 /// screen directly, so diagnosis is never blocked by a missing backend.
 class AppGate extends StatefulWidget {
   final String initialLang;
-  const AppGate({super.key, required this.initialLang});
+
+  /// False on first launch: the farmer picks a language before anything else.
+  final bool langChosen;
+  const AppGate(
+      {super.key, required this.initialLang, this.langChosen = true});
 
   @override
   State<AppGate> createState() => _AppGateState();
@@ -21,6 +26,7 @@ class AppGate extends StatefulWidget {
 
 class _AppGateState extends State<AppGate> {
   late String _lang = widget.initialLang;
+  late bool _langChosen = widget.langChosen;
   StreamSubscription<void>? _accountSub;
 
   @override
@@ -38,12 +44,18 @@ class _AppGateState extends State<AppGate> {
   }
 
   void _setLang(String lang) {
-    setState(() => _lang = lang);
+    setState(() {
+      _lang = lang;
+      _langChosen = true;
+    });
     Storage.setLang(lang);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_langChosen) {
+      return LanguageScreen(initial: _lang, onDone: _setLang);
+    }
     if (Backend.enabled && Backend.account == null) {
       return SignInScreen(lang: _lang, onLang: _setLang);
     }

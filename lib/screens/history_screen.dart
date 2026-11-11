@@ -61,7 +61,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           await _load();
                         },
                         child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(22, 8, 22, 30),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
                           itemCount: _items.length,
                           itemBuilder: (_, i) => _HistoryCard(
                             d: _items[i],

@@ -144,7 +144,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       TopBar(title: t.get('setup')),
       Expanded(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
           children: [
             Text(t.get('setupSub'),
                 style: AppText.body(15, color: AppColors.textDim)),
@@ -245,18 +245,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Column(children: [
       TopBar(
         title: t.get('season'),
-        trailing: TextButton.icon(
+        // Icon only, so the title has room ("Your season plan").
+        trailing: IconButton(
           onPressed: _startNew,
-          icon: const Icon(Icons.restart_alt, size: 19),
-          label: Text(t.get('newSeason'),
-              style: AppText.body(14,
-                  weight: FontWeight.w600, color: AppColors.primary)),
-          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          tooltip: t.get('newSeason'),
+          icon: const Icon(Icons.restart_alt, color: AppColors.primary),
         ),
       ),
       Expanded(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 8, 22, 30),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
           children: [
             _SeasonHeader(
               plan: p,

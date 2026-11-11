@@ -8,6 +8,22 @@ class L10n {
 
   static const Map<String, Map<String, String>> _strings = {
     'en': {
+      'chooseLanguage': 'Choose your language',
+      'chooseLanguageSub': 'You can change it any time in Account.',
+      'language': 'Language',
+      'langSoon': 'Coming soon',
+      'tabScan': 'Scan',
+      'today': 'Today',
+      'about': 'About MY FARM',
+      'builtBy': 'Built by Afrotym',
+      'builtByShort': 'Built by',
+      'aboutBody':
+          'MY FARM helps farmers in Uganda find crop diseases from a photo, even without internet, and plan their season.',
+      'website': 'Website',
+      'support': 'Support',
+      'editName': 'Your name',
+      'settings': 'Settings',
+      'match': 'match',
       'appName': 'MY FARM',
       'tagline': 'Your pocket agronomist',
       'heroSub':
@@ -218,6 +234,22 @@ class L10n {
       'deleted': 'Your account has been deleted.',
     },
     'lg': {
+      'chooseLanguage': 'Londa olulimi lwo',
+      'chooseLanguageSub': "Osobola okulukyusa essaawa yonna mu Akawunta.",
+      'language': 'Olulimi',
+      'langSoon': 'Lujja mangu',
+      'tabScan': 'Kebera',
+      'today': 'Leero',
+      'about': 'Ebikwata ku MY FARM',
+      'builtBy': 'Yakolebwa Afrotym',
+      'builtByShort': 'Yakolebwa',
+      'aboutBody':
+          "MY FARM eyamba abalimi mu Uganda okuzuula endwadde z'ebirime okuva mu kifaananyi, ne bwe wataba yintaneeti, n'okuteekateeka sizoni yaabwe.",
+      'website': 'Omukutu',
+      'support': 'Obuyambi',
+      'editName': 'Erinnya lyo',
+      'settings': 'Ensengeka',
+      'match': 'okukwatagana',
       'appName': 'FAAMU YANGE',
       'tagline': 'Omulimisa wo mu nsawo',
       'heroSub':

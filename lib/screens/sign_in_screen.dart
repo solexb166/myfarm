@@ -6,6 +6,7 @@ import '../services/backend.dart';
 import '../services/l10n.dart';
 import '../services/links.dart';
 import '../widgets/common.dart';
+import '../widgets/language_picker.dart';
 
 /// First screen of the app: sign in with a code sent by SMS to the farmer's
 /// phone, or by email (no password). Needs internet once; afterwards the
@@ -226,12 +227,12 @@ class _SignInScreenState extends State<SignInScreen> {
         Text(t.get('appName'),
             style: AppText.display(18, weight: FontWeight.w800, spacing: 0)),
         const Spacer(),
-        LangToggle(lang: widget.lang, onChange: widget.onLang),
+        LangButton(lang: widget.lang, onChange: widget.onLang),
       ]);
 
   /// Step 1: phone number or email (email only while [phoneSignIn] is off).
   List<Widget> _addressStep() => [
-        Text(t.get('signInTitle'), style: AppText.display(30)),
+        Text(t.get('signInTitle'), style: AppText.display(26)),
         const SizedBox(height: 8),
         Text(t.get(phoneSignIn ? 'signInSub' : 'signInSubEmail'),
             style: AppText.body(15.5, color: AppColors.textDim)),
@@ -273,7 +274,7 @@ class _SignInScreenState extends State<SignInScreen> {
     if (_reviewer) return _passwordStep();
     final to = _byPhone ? Backend.formatPhone(_sentTo!) : _sentTo!;
     return [
-      Text(t.get('codeTitle'), style: AppText.display(30)),
+      Text(t.get('codeTitle'), style: AppText.display(26)),
       const SizedBox(height: 8),
       Text.rich(
         TextSpan(
@@ -305,7 +306,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   /// Step 2 for the reviewer account only: its password.
   List<Widget> _passwordStep() => [
-        Text(t.get('passwordTitle'), style: AppText.display(30)),
+        Text(t.get('passwordTitle'), style: AppText.display(26)),
         const SizedBox(height: 8),
         Text.rich(TextSpan(
           text: t.get('passwordSub').replaceAll('{to}', _sentTo!),
@@ -372,6 +373,8 @@ class _SignInScreenState extends State<SignInScreen> {
           small: true,
           onTap: () => Links.open(Links.privacyPolicy),
         ),
+        const SizedBox(height: 10),
+        AfrotymCredit(lang: widget.lang, size: 12),
       ]);
 }
 

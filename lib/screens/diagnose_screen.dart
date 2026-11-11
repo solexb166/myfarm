@@ -176,7 +176,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.primary))
                 : ListView(
-                    padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
                     children: [
                       Text(t.get('chooseCropSub'),
                           style: AppText.body(15, color: AppColors.textDim)),
@@ -222,7 +222,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
           TopBar(title: _cropName(crop), onBack: _changeCrop),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               children: [
                 _image == null ? _photoTips() : _photoPreview(),
                 if (_error != null) ...[
@@ -233,7 +233,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 4, 22, 18),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
             child: Column(children: [
               Row(children: [
                 Expanded(

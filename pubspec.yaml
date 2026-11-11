@@ -54,3 +54,5 @@ flutter:
     # Crop photos (optional; illustrations are used when missing)
     - assets/crops/
     - assets/icon/
+    # Afrotym logo (About, startup, footers)
+    - assets/brand/

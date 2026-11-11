@@ -5,6 +5,7 @@ import '../services/l10n.dart';
 import '../services/storage.dart';
 import '../services/treatment_db.dart';
 import '../theme/app_theme.dart';
+import '../widgets/common.dart';
 import 'app_gate.dart';
 
 /// Opening screen. The MY FARM logo builds itself - the leaf tile pops in,
@@ -28,6 +29,7 @@ class _StartupScreenState extends State<StartupScreen>
         ..repeat();
 
   String _lang = 'en';
+  bool _langChosen = true;
   bool _ready = false;
 
   @override
@@ -38,6 +40,7 @@ class _StartupScreenState extends State<StartupScreen>
 
   Future<void> _start() async {
     _lang = await Storage.getLang();
+    _langChosen = await Storage.hasLang();
     if (mounted) setState(() {});
     final reduceMotion = WidgetsBinding
         .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
@@ -74,7 +77,10 @@ class _StartupScreenState extends State<StartupScreen>
         child: child,
       ),
       child: _ready
-          ? AppGate(key: const ValueKey('app'), initialLang: _lang)
+          ? AppGate(
+              key: const ValueKey('app'),
+              initialLang: _lang,
+              langChosen: _langChosen)
           : _logo(),
     );
   }
@@ -85,6 +91,21 @@ class _StartupScreenState extends State<StartupScreen>
     return Scaffold(
       key: const ValueKey('startup'),
       backgroundColor: AppColors.bg,
+      // "Built by Afrotym" fades in at the bottom with the tagline.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 28),
+          child: AnimatedBuilder(
+            animation: _intro,
+            builder: (context, child) => Opacity(
+                opacity: ((_intro.value - 0.55) / 0.25).clamp(0.0, 1.0),
+                child: child),
+            child: Center(
+                heightFactor: 1,
+                child: AfrotymCredit(lang: _lang, size: 14)),
+          ),
+        ),
+      ),
       body: Center(
         child: AnimatedBuilder(
           animation: Listenable.merge([_intro, _spin]),

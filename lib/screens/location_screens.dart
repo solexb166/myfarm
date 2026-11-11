@@ -87,7 +87,7 @@ class _LocationConsentScreenState extends State<LocationConsentScreen> {
           TopBar(title: t.get('locTitle')),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
               children: [
                 const Align(
                   alignment: Alignment.centerLeft,
@@ -138,7 +138,7 @@ class _LocationConsentScreenState extends State<LocationConsentScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 4, 22, 18),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
             child: BigButton(
               label: _busy ? t.get('locFinding') : t.get('continue'),
               icon: Icons.arrow_forward,
@@ -277,7 +277,7 @@ class _AreaPickerScreenState extends State<AreaPickerScreen> {
                       }),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 10),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -355,7 +355,7 @@ class _AreaTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: AppColors.border)),
         ),

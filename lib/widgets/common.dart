@@ -1,47 +1,23 @@
 import 'package:flutter/material.dart';
+import '../services/l10n.dart';
 import '../theme/app_theme.dart';
 
-/// EN / LUG pill toggle.
-class LangToggle extends StatelessWidget {
+/// "Built by Afrotym" with the Afrotym mark, for footers and About.
+class AfrotymCredit extends StatelessWidget {
   final String lang;
-  final ValueChanged<String> onChange;
-  const LangToggle({super.key, required this.lang, required this.onChange});
+  final double size;
+  const AfrotymCredit({super.key, required this.lang, this.size = 13});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final l in const ['en', 'lg'])
-            GestureDetector(
-              onTap: () => onChange(l),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: lang == l ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  l == 'en' ? 'EN' : 'LUG',
-                  style: AppText.body(12,
-                      weight: FontWeight.w700,
-                      color:
-                          lang == l ? AppColors.onPrimary : AppColors.textDim),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Image.asset('assets/brand/afrotym_mark.png',
+          width: size * 1.4, height: size * 1.4),
+      const SizedBox(width: 6),
+      Text(L10n(lang).get('builtBy'),
+          style: AppText.body(size,
+              weight: FontWeight.w600, color: AppColors.textDim)),
+    ]);
   }
 }
 
@@ -113,7 +89,7 @@ class TopBar extends StatelessWidget {
             ? () => Navigator.of(context).maybePop()
             : null);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Row(children: [
         if (back != null) ...[
           Material(
@@ -140,7 +116,7 @@ class TopBar extends StatelessWidget {
         ],
         Expanded(
           child: Text(title,
-              style: AppText.display(22, weight: FontWeight.w800),
+              style: AppText.display(21, weight: FontWeight.w800),
               overflow: TextOverflow.ellipsis),
         ),
         if (trailing != null) trailing!,
@@ -363,6 +339,129 @@ class TextLink extends StatelessWidget {
       icon: Icon(icon, size: 17, color: color),
       label: Text(label,
           style: AppText.body(14, weight: FontWeight.w600, color: color)),
+    );
+  }
+}
+
+/// Small grey heading above a [SettingsGroup].
+class SettingsHeader extends StatelessWidget {
+  final String text;
+  const SettingsHeader(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
+        child: Text(text.toUpperCase(),
+            style: AppText.body(12,
+                weight: FontWeight.w700, color: AppColors.textDim)
+                .copyWith(letterSpacing: 0.6)),
+      );
+}
+
+/// White card of [SettingsRow]s separated by thin lines, like a phone's
+/// settings app.
+class SettingsGroup extends StatelessWidget {
+  final List<Widget> children;
+  const SettingsGroup({super.key, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: Column(children: [
+        for (final (i, c) in children.indexed) ...[
+          if (i > 0) const Divider(height: 1, indent: 56),
+          c,
+        ],
+      ]),
+    );
+  }
+}
+
+/// One setting: icon, title, optional detail line, and a value or arrow.
+class SettingsRow extends StatelessWidget {
+  final Widget leading;
+  final String title;
+  final String? sub;
+  final String? value;
+  final IconData? trailing;
+  final Color? color;
+  final VoidCallback? onTap;
+  const SettingsRow({
+    super.key,
+    required this.leading,
+    required this.title,
+    this.sub,
+    this.value,
+    this.trailing = Icons.chevron_right,
+    this.color,
+    this.onTap,
+  });
+
+  /// [SettingsRow] with a plain icon.
+  SettingsRow.icon(
+    IconData icon, {
+    Key? key,
+    required String title,
+    String? sub,
+    String? value,
+    IconData? trailing = Icons.chevron_right,
+    Color? color,
+    VoidCallback? onTap,
+  }) : this(
+          key: key,
+          leading: Icon(icon, size: 22, color: color ?? AppColors.textDim),
+          title: title,
+          sub: sub,
+          value: value,
+          trailing: trailing,
+          color: color,
+          onTap: onTap,
+        );
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 54),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+          child: Row(children: [
+            SizedBox(width: 24, child: Center(child: leading)),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title,
+                      style: AppText.body(15.5,
+                          weight: FontWeight.w600,
+                          color: color ?? AppColors.text)),
+                  if (sub != null)
+                    Text(sub!,
+                        style: AppText.body(13, color: AppColors.textDim)),
+                ],
+              ),
+            ),
+            if (value != null) ...[
+              const SizedBox(width: 8),
+              Text(value!,
+                  style: AppText.body(14.5, color: AppColors.textDim)),
+            ],
+            if (trailing != null) ...[
+              const SizedBox(width: 2),
+              Icon(trailing, size: 20, color: AppColors.textDim),
+            ],
+          ]),
+        ),
+      ),
     );
   }
 }

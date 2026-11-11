@@ -117,80 +117,74 @@ class _DiagnosisViewState extends State<DiagnosisView> {
       (Icons.shield_outlined, AppColors.info, t.get('prevent'), advice.prevent),
     ];
 
-    final details = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
+    final meta = [
+      crop ?? d.crop,
+      if (place != null) place,
+    ].join(' · ');
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 0),
+          child: Row(children: [
             StatusBadge(healthy: d.healthy, lang: widget.lang),
             const Spacer(),
-            _MatchChip(pct: d.confidence, t: t),
-          ]),
-          const SizedBox(height: 10),
-          Text(d.diagnosis, style: AppText.display(26, spacing: -0.6)),
-          const SizedBox(height: 6),
-          Row(children: [
-            CropArt(cropKey: cropKey, size: 20, tile: false),
-            const SizedBox(width: 6),
-            Text(crop ?? d.crop,
-                style: AppText.body(14,
-                    weight: FontWeight.w600, color: AppColors.textDim)),
-            if (place != null) ...[
-              const SizedBox(width: 12),
-              const Icon(Icons.place_outlined,
-                  size: 16, color: AppColors.textDim),
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(place,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.body(14,
-                        weight: FontWeight.w600, color: AppColors.textDim)),
-              ),
-            ],
-          ]),
-          const SizedBox(height: 14),
-          _ListenButton(
-            speaking: _speaking,
-            label: _speaking ? t.get('stop') : t.get('listen'),
-            onTap: _toggleSpeak,
-          ),
-          const SizedBox(height: 14),
-          Material(
-            color: AppColors.surface,
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppColors.border),
+            _ListenButton(
+              speaking: _speaking,
+              label: _speaking ? t.get('stop') : t.get('listenShort'),
+              onTap: _toggleSpeak,
             ),
-            child: Column(children: [
-              for (final (i, (icon, tint, label, text)) in sections.indexed) ...[
-                if (i > 0) const Divider(height: 1),
-                _AdviceSection(
-                  icon: icon,
-                  tint: tint,
-                  label: label,
-                  text: text,
-                  open: i == 0,
-                ),
-              ],
-            ]),
+          ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text(d.diagnosis, style: AppText.display(25, spacing: -0.6)),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: Row(children: [
+            CropArt(cropKey: cropKey, size: 18, tile: false),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(meta,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.body(13.5,
+                      weight: FontWeight.w600, color: AppColors.textDim)),
+            ),
+            const SizedBox(width: 8),
+            _MatchText(pct: d.confidence, t: t),
+          ]),
+        ),
+        const Divider(height: 1),
+        for (final (i, (icon, tint, label, text)) in sections.indexed) ...[
+          if (i > 0) const Divider(height: 1, indent: 60),
+          _AdviceSection(
+            icon: icon,
+            tint: tint,
+            label: label,
+            text: text,
+            open: i == 0,
           ),
-          const SizedBox(height: 14),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.support_agent, size: 17, color: AppColors.info),
+        ],
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.support_agent, size: 16, color: AppColors.textDim),
             const SizedBox(width: 8),
             Expanded(
               child: Text(t.get('confirmNote'),
                   style: AppText.body(12.5, color: AppColors.textDim)),
             ),
           ]),
-          if (widget.footer != null) ...[
-            const SizedBox(height: 18),
-            widget.footer!,
-          ],
-        ],
-      ),
+        ),
+        if (widget.footer != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: widget.footer!,
+          ),
+        const SizedBox(height: 20),
+      ],
     );
 
     if (!hasPhoto) {
@@ -210,7 +204,7 @@ class _DiagnosisViewState extends State<DiagnosisView> {
         children: [
           Stack(children: [
             Image.file(photo,
-                height: 260 + top, width: double.infinity, fit: BoxFit.cover),
+                height: 230 + top, width: double.infinity, fit: BoxFit.cover),
             if (back != null)
               Positioned(
                 left: 12,
@@ -228,16 +222,7 @@ class _DiagnosisViewState extends State<DiagnosisView> {
                 ),
               ),
           ]),
-          Transform.translate(
-            offset: const Offset(0, -18),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: AppColors.bg,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: details,
-            ),
-          ),
+          details,
         ],
       ),
     );
@@ -265,8 +250,9 @@ class _AdviceSection extends StatelessWidget {
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         initiallyExpanded: open,
-        tilePadding: const EdgeInsets.fromLTRB(14, 2, 12, 2),
-        childrenPadding: const EdgeInsets.fromLTRB(56, 0, 16, 14),
+        tilePadding: const EdgeInsets.fromLTRB(16, 0, 12, 0),
+        childrenPadding: const EdgeInsets.fromLTRB(60, 0, 16, 14),
+        minTileHeight: 52,
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         iconColor: AppColors.textDim,
         collapsedIconColor: AppColors.textDim,
@@ -288,60 +274,36 @@ class _AdviceSection extends StatelessWidget {
 
 /// How sure the model is, in words first (High / Medium) and the number
 /// second. Deliberately neutral in colour: it is not good or bad news.
-class _MatchChip extends StatelessWidget {
-  final int pct;
-  final L10n t;
-  const _MatchChip({required this.pct, required this.t});
-
-  @override
-  Widget build(BuildContext context) {
-    final level = pct >= 80
-        ? t.get('confHigh')
-        : pct >= 65
-            ? t.get('confMedium')
-            : t.get('confLow');
-    return Tooltip(
-      message: t.get('confidence'),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.insights, size: 15, color: AppColors.textDim),
-          const SizedBox(width: 5),
-          Text('$level · $pct% ${t.get('match')}',
-              style: AppText.body(12.5, weight: FontWeight.w600)),
-        ]),
-      ),
-    );
-  }
-}
-
 /// "Healthy" or "Disease detected" pill.
 class StatusBadge extends StatelessWidget {
   final bool healthy;
   final String lang;
   final bool small;
+
+  /// Coloured icon and text only, no pill behind it (for dense lists).
+  final bool plain;
   const StatusBadge(
       {super.key,
       required this.healthy,
       required this.lang,
-      this.small = false});
+      this.small = false,
+      this.plain = false});
 
   @override
   Widget build(BuildContext context) {
     final fg = healthy ? AppColors.primary : AppColors.danger;
     final bg = healthy ? AppColors.primarySoft : AppColors.dangerSoft;
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: small ? 9 : 12, vertical: small ? 3 : 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
+      padding: plain
+          ? EdgeInsets.zero
+          : EdgeInsets.symmetric(
+              horizontal: small ? 9 : 12, vertical: small ? 3 : 6),
+      decoration: plain
+          ? null
+          : BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(999),
+            ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(healthy ? Icons.check_circle_outline : Icons.warning_amber_rounded,
             size: small ? 13 : 16, color: fg),
@@ -359,6 +321,28 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
+/// How sure the model is, the number then the word (High / Medium).
+/// Deliberately neutral in colour: it is not good or bad news.
+class _MatchText extends StatelessWidget {
+  final int pct;
+  final L10n t;
+  const _MatchText({required this.pct, required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    final level = pct >= 80
+        ? t.get('confHigh')
+        : pct >= 65
+            ? t.get('confMedium')
+            : t.get('confLow');
+    return Tooltip(
+      message: t.get('confidence'),
+      child: Text('$pct% ${t.get('match')} ($level)',
+          style: AppText.body(13, color: AppColors.textDim)),
+    );
+  }
+}
+
 class _ListenButton extends StatelessWidget {
   final bool speaking;
   final String label;
@@ -368,23 +352,17 @@ class _ListenButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(speaking ? Icons.stop_circle_outlined : Icons.volume_up,
-            size: 20),
-        label: Text(label,
-            style: AppText.body(15,
-                weight: FontWeight.w700, color: AppColors.primary)),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          backgroundColor: speaking ? AppColors.primarySoft : AppColors.surface,
-          side: const BorderSide(color: AppColors.border),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(speaking ? Icons.stop_circle_outlined : Icons.volume_up,
+          size: 20),
+      label: Text(label,
+          style: AppText.body(14,
+              weight: FontWeight.w700, color: AppColors.primary)),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        backgroundColor: speaking ? AppColors.primarySoft : null,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }

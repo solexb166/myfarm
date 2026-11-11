@@ -176,34 +176,35 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.primary))
                 : ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                    padding: const EdgeInsets.only(bottom: 24),
                     children: [
-                      Text(t.get('chooseCropSub'),
-                          style: AppText.body(15, color: AppColors.textDim)),
-                      const SizedBox(height: 16),
-                      for (final c in ready)
-                        _CropRow(
-                          cropKey: c['key']!,
-                          name: _cropName(c),
-                          sub: widget.lang == 'lg' ? c['name']! : c['luganda']!,
-                          onTap: () => setState(() => _cropKey = c['key']),
-                        ),
-                      if (soon.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 2, bottom: 10),
-                          child: Text(t.get('comingSoonTitle'),
-                              style: AppText.display(16,
-                                  weight: FontWeight.w700,
-                                  color: AppColors.textDim)),
-                        ),
-                        for (final c in soon)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: Text(t.get('chooseCropSub'),
+                            style: AppText.body(14, color: AppColors.textDim)),
+                      ),
+                      SettingsGroup(indent: 80, children: [
+                        for (final c in ready)
                           _CropRow(
                             cropKey: c['key']!,
                             name: _cropName(c),
-                            sub: t.get('cropUnavailable'),
-                            soonLabel: t.get('comingSoon'),
+                            sub: widget.lang == 'lg'
+                                ? c['name']!
+                                : c['luganda']!,
+                            onTap: () => setState(() => _cropKey = c['key']),
                           ),
+                      ]),
+                      if (soon.isNotEmpty) ...[
+                        SettingsHeader(t.get('comingSoonTitle')),
+                        SettingsGroup(indent: 80, children: [
+                          for (final c in soon)
+                            _CropRow(
+                              cropKey: c['key']!,
+                              name: _cropName(c),
+                              sub: t.get('cropUnavailable'),
+                              soonLabel: t.get('comingSoon'),
+                            ),
+                        ]),
                       ],
                     ],
                   ),
@@ -268,7 +269,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
 
   Widget _photoPreview() {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(16),
       child: AspectRatio(
         aspectRatio: 3 / 4,
         child: Image.file(_image!, fit: BoxFit.cover),
@@ -285,47 +286,35 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
             Expanded(child: Text(text, style: AppText.body(14.5))),
           ]),
         );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 76,
-              height: 76,
-              decoration: const BoxDecoration(
-                  color: AppColors.primarySoft, shape: BoxShape.circle),
-              child: const Icon(Icons.photo_camera_outlined,
-                  size: 36, color: AppColors.primary),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Center(
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: const BoxDecoration(
+                color: AppColors.primarySoft, shape: BoxShape.circle),
+            child: const Icon(Icons.photo_camera_outlined,
+                size: 34, color: AppColors.primary),
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(t.get('photoTitle'),
-                textAlign: TextAlign.center,
-                style: AppText.display(20, weight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 6),
-          Center(
-            child: Text(t.get('scanSub'),
-                textAlign: TextAlign.center,
-                style: AppText.body(14, color: AppColors.textDim)),
-          ),
-          const SizedBox(height: 10),
-          const Divider(height: 24),
-          Text(t.get('tipsTitle'),
-              style: AppText.body(14.5, weight: FontWeight.w700)),
-          tip(Icons.crop_free, t.get('tip1')),
-          tip(Icons.wb_sunny_outlined, t.get('tip2')),
-          tip(Icons.center_focus_strong_outlined, t.get('tip3')),
-        ],
-      ),
+        ),
+        const SizedBox(height: 14),
+        Center(
+          child: Text(t.get('photoTitle'),
+              textAlign: TextAlign.center,
+              style: AppText.display(19, weight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 22),
+        Text(t.get('tipsTitle').toUpperCase(),
+            style: AppText.body(12,
+                    weight: FontWeight.w700, color: AppColors.textDim)
+                .copyWith(letterSpacing: 0.6)),
+        tip(Icons.crop_free, t.get('tip1')),
+        tip(Icons.wb_sunny_outlined, t.get('tip2')),
+        tip(Icons.center_focus_strong_outlined, t.get('tip3')),
+      ],
     );
   }
 }
@@ -347,56 +336,15 @@ class _CropRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final soon = soonLabel != null;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: soon ? AppColors.bg : AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(children: [
-              CropArt(cropKey: cropKey, size: 60, muted: soon),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name,
-                        style: AppText.display(18,
-                            weight: FontWeight.w700,
-                            color: soon ? AppColors.textDim : AppColors.text)),
-                    if (sub.isNotEmpty && sub != name) ...[
-                      const SizedBox(height: 2),
-                      Text(sub,
-                          style: AppText.body(13.5, color: AppColors.textDim)),
-                    ],
-                  ],
-                ),
-              ),
-              if (soon)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(soonLabel!,
-                      style: AppText.body(12,
-                          weight: FontWeight.w700, color: AppColors.textDim)),
-                )
-              else
-                const Icon(Icons.chevron_right, color: AppColors.textDim),
-            ]),
-          ),
-        ),
-      ),
+    return SettingsRow(
+      leadingWidth: 48,
+      leading: CropArt(cropKey: cropKey, size: 48, muted: soon),
+      title: name,
+      sub: sub.isNotEmpty && sub != name ? sub : null,
+      color: soon ? AppColors.textDim : null,
+      value: soonLabel,
+      trailing: soon ? null : Icons.chevron_right,
+      onTap: onTap,
     );
   }
 }

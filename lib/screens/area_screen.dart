@@ -106,8 +106,17 @@ class _AreaScreenState extends State<AreaScreen> {
               color: AppColors.primary,
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-                children: d == null ? _noDistrict() : _forDistrict(d),
+                padding: const EdgeInsets.only(bottom: 24),
+                children: d == null
+                    ? [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: _noDistrict()),
+                        )
+                      ]
+                    : _forDistrict(d),
               ),
             ),
           ),
@@ -143,33 +152,35 @@ class _AreaScreenState extends State<AreaScreen> {
   List<Widget> _forDistrict(District d) {
     final report = _report;
     final date = DateFormat('d MMM y');
+    Widget pad(Widget w) =>
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: w);
     return [
-      Text(t.get('nearYouSub').replaceAll('{district}', d.name),
-          style: AppText.display(22)),
-      const SizedBox(height: 6),
+      pad(Text(t.get('nearYouSub').replaceAll('{district}', d.name),
+          style: AppText.display(20))),
+      const SizedBox(height: 4),
       if (report != null && report.farmers > 0)
-        Text(
+        pad(Text(
             t
                 .get('areaBasis')
                 .replaceAll('{n}', '${report.farmers}')
                 .replaceAll('{d}', '${report.days}'),
-            style: AppText.body(14.5, color: AppColors.textDim)),
+            style: AppText.body(13.5, color: AppColors.textDim))),
       if (report != null &&
           DateTime.now().millisecondsSinceEpoch - report.fetchedAt >
               const Duration(minutes: 10).inMilliseconds) ...[
         const SizedBox(height: 4),
-        Row(children: [
-          const Icon(Icons.history, size: 16, color: AppColors.textDim),
+        pad(Row(children: [
+          const Icon(Icons.history, size: 15, color: AppColors.textDim),
           const SizedBox(width: 6),
           Text(
               t.get('areaUpdated').replaceAll(
                   '{date}',
                   date.format(
                       DateTime.fromMillisecondsSinceEpoch(report.fetchedAt))),
-              style: AppText.body(13.5, color: AppColors.textDim)),
-        ]),
+              style: AppText.body(13, color: AppColors.textDim)),
+        ])),
       ],
-      const SizedBox(height: 18),
+      const SizedBox(height: 12),
       if (_loading && report == null)
         const Padding(
           padding: EdgeInsets.only(top: 60),
@@ -177,19 +188,22 @@ class _AreaScreenState extends State<AreaScreen> {
               child: CircularProgressIndicator(color: AppColors.primary)),
         )
       else if (report == null) ...[
-        Notice(
+        pad(Notice(
             icon: Icons.wifi_off,
             color: AppColors.accent,
-            text: t.get(_errorKey ?? 'areaNeedsNet')),
+            text: t.get(_errorKey ?? 'areaNeedsNet'))),
         const SizedBox(height: 14),
-        BigButton(label: t.get('retry'), icon: Icons.refresh, onTap: _load),
+        pad(BigButton(
+            label: t.get('retry'), icon: Icons.refresh, onTap: _load)),
       ] else if (report.diseases.isEmpty)
-        _EmptyArea(
+        pad(_EmptyArea(
           title: t.get('areaEmpty').replaceAll('{district}', d.name),
           sub: t.get('areaEmptySub'),
-        )
-      else
-        for (final disease in report.diseases)
+        ))
+      else ...[
+        const Divider(height: 1),
+        for (final (i, disease) in report.diseases.indexed) ...[
+          if (i > 0) const Divider(height: 1, indent: 76),
           _DiseaseCard(
             disease: disease,
             lang: widget.lang,
@@ -197,15 +211,18 @@ class _AreaScreenState extends State<AreaScreen> {
             onTap: () => setState(
                 () => _open = _open == disease.label ? null : disease.label),
           ),
-      const SizedBox(height: 10),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Icon(Icons.lock_outline, size: 16, color: AppColors.textDim),
+        ],
+        const Divider(height: 1),
+      ],
+      const SizedBox(height: 12),
+      pad(Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Icon(Icons.lock_outline, size: 15, color: AppColors.textDim),
         const SizedBox(width: 8),
         Expanded(
           child: Text(t.get('areaPrivacy'),
-              style: AppText.body(13, color: AppColors.textDim)),
+              style: AppText.body(12.5, color: AppColors.textDim)),
         ),
-      ]),
+      ])),
     ];
   }
 }
@@ -256,116 +273,56 @@ class _DiseaseCard extends StatelessWidget {
     final cropKey = InferenceService.cropKeyFor(disease.crop) ?? '';
     final lastSeen = DateTime.tryParse(disease.lastSeen);
     final advice = TreatmentDB.lookup(disease.label, lang);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(
-              color: open ? AppColors.primary : AppColors.border,
-              width: open ? 1.5 : 1),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  CropArt(cropKey: cropKey, size: 50),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(InferenceService.prettyLabel(disease.label),
-                            style: AppText.body(16.5, weight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text(
-                          InferenceService.cropDisplayName(disease.crop, lang),
-                          style: AppText.body(13.5, color: AppColors.textDim),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(open ? Icons.expand_less : Icons.expand_more,
-                      color: AppColors.textDim),
-                ]),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppColors.dangerSoft,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.groups_outlined,
-                          size: 16, color: AppColors.danger),
-                      const SizedBox(width: 6),
-                      Text(
-                          t
-                              .get('areaFarmers')
-                              .replaceAll('{n}', '${disease.farmers}'),
-                          style: AppText.body(13.5,
-                              weight: FontWeight.w700,
-                              color: AppColors.danger)),
-                    ]),
-                  ),
-                  const SizedBox(width: 10),
-                  if (lastSeen != null)
-                    Expanded(
-                      child: Text(
-                        t.get('areaLastSeen').replaceAll(
-                            '{date}', DateFormat('d MMM').format(lastSeen)),
-                        style: AppText.body(13.5, color: AppColors.textDim),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ]),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOut,
-                  alignment: Alignment.topCenter,
-                  child: !open
-                      ? const SizedBox(width: double.infinity)
-                      : Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(t.get('whatToDo'),
-                                  style: AppText.display(16,
-                                      weight: FontWeight.w700)),
-                              const SizedBox(height: 10),
-                              InfoBlock(
-                                  icon: Icons.shield_outlined,
-                                  label: t.get('prevent'),
-                                  text: advice.prevent,
-                                  tint: AppColors.info),
-                              InfoBlock(
-                                  icon: Icons.spa_outlined,
-                                  label: t.get('organic'),
-                                  text: advice.organic,
-                                  tint: AppColors.primary),
-                              InfoBlock(
-                                  icon: Icons.science_outlined,
-                                  label: t.get('chemical'),
-                                  text: advice.chemical,
-                                  tint: AppColors.accent),
-                            ],
-                          ),
-                        ),
-                ),
-              ],
-            ),
+    Widget part(String label, String text) => Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppText.body(13.5, weight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(text, style: AppText.body(14)),
+            ],
           ),
-        ),
+        );
+    return Column(children: [
+      SettingsRow(
+        leadingWidth: 44,
+        leading: CropArt(cropKey: cropKey, size: 44),
+        title: InferenceService.prettyLabel(disease.label),
+        sub: [
+          InferenceService.cropDisplayName(disease.crop, lang),
+          if (lastSeen != null)
+            t.get('areaLastSeen').replaceAll(
+                '{date}', DateFormat('d MMM').format(lastSeen)),
+        ].join(' · '),
+        subWidget: Row(children: [
+          const Icon(Icons.groups_outlined, size: 15, color: AppColors.danger),
+          const SizedBox(width: 5),
+          Text(t.get('areaFarmers').replaceAll('{n}', '${disease.farmers}'),
+              style: AppText.body(13,
+                  weight: FontWeight.w700, color: AppColors.danger)),
+        ]),
+        trailing: open ? Icons.expand_less : Icons.expand_more,
+        onTap: onTap,
       ),
-    );
+      AnimatedSize(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        alignment: Alignment.topCenter,
+        child: !open
+            ? const SizedBox(width: double.infinity)
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(76, 0, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    part(t.get('prevent'), advice.prevent),
+                    part(t.get('organic'), advice.organic),
+                    part(t.get('chemical'), advice.chemical),
+                  ],
+                ),
+              ),
+      ),
+    ]);
   }
 }

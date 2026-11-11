@@ -60,9 +60,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           await Backend.sync();
                           await _load();
                         },
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 24),
                           itemCount: _items.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, indent: 84),
                           itemBuilder: (_, i) => _HistoryCard(
                             d: _items[i],
                             lang: widget.lang,
@@ -116,75 +118,41 @@ class _HistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = L10n(lang);
     final hasImg = d.imagePath != null && File(d.imagePath!).existsSync();
-    final when = DateFormat('d MMM yyyy, HH:mm')
+    final when = DateFormat('d MMM, HH:mm')
         .format(DateTime.fromMillisecondsSinceEpoch(d.timestamp));
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () async {
-            await Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => DiagnosisDetailScreen(d: d, lang: lang)));
-            onReturn();
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: hasImg
-                    ? Image.file(File(d.imagePath!),
-                        width: 64, height: 64, fit: BoxFit.cover)
-                    : CropArt(
-                        cropKey: InferenceService.cropKeyFor(d.crop) ?? '',
-                        size: 64),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(d.diagnosis,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body(16, weight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text('${d.crop}  ·  $when',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body(13, color: AppColors.textDim)),
-                    const SizedBox(height: 7),
-                    Row(children: [
-                      StatusBadge(healthy: d.healthy, lang: lang, small: true),
-                      const Spacer(),
-                      if (Backend.enabled)
-                        Tooltip(
-                          message: t.get(d.synced ? 'syncedOne' : 'pendingOne'),
-                          child: Icon(
-                            d.synced
-                                ? Icons.cloud_done_outlined
-                                : Icons.cloud_upload_outlined,
-                            size: 18,
-                            color:
-                                d.synced ? AppColors.textDim : AppColors.accent,
-                          ),
-                        ),
-                    ]),
-                  ],
-                ),
-              ),
-            ]),
-          ),
-        ),
+    return SettingsRow(
+      leadingWidth: 52,
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: hasImg
+            ? Image.file(File(d.imagePath!),
+                width: 52, height: 52, fit: BoxFit.cover)
+            : CropArt(
+                cropKey: InferenceService.cropKeyFor(d.crop) ?? '', size: 52),
       ),
+      title: d.diagnosis,
+      sub: '${InferenceService.cropDisplayName(d.crop, lang)} · $when',
+      subWidget: Row(children: [
+        StatusBadge(healthy: d.healthy, lang: lang, small: true, plain: true),
+        if (Backend.enabled) ...[
+          const SizedBox(width: 10),
+          Tooltip(
+            message: t.get(d.synced ? 'syncedOne' : 'pendingOne'),
+            child: Icon(
+              d.synced ? Icons.cloud_done_outlined : Icons.cloud_upload_outlined,
+              size: 15,
+              color: d.synced ? AppColors.textDim : AppColors.accent,
+            ),
+          ),
+        ],
+      ]),
+      onTap: () async {
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => DiagnosisDetailScreen(d: d, lang: lang)));
+        onReturn();
+      },
     );
   }
 }

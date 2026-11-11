@@ -89,30 +89,18 @@ class TopBar extends StatelessWidget {
             ? () => Navigator.of(context).maybePop()
             : null);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: EdgeInsets.fromLTRB(back == null ? 16 : 6, 12, 12, 6),
       child: Row(children: [
         if (back != null) ...[
-          Material(
-            color: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: AppColors.border),
-            ),
-            child: InkWell(
-              onTap: back,
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                width: 42,
-                height: 42,
-                child: Icon(Icons.arrow_back,
-                    size: 20,
-                    color: AppColors.text,
-                    semanticLabel:
-                        MaterialLocalizations.of(context).backButtonTooltip),
-              ),
-            ),
+          IconButton(
+            onPressed: back,
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.arrow_back,
+                color: AppColors.text,
+                semanticLabel:
+                    MaterialLocalizations.of(context).backButtonTooltip),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 4),
         ],
         Expanded(
           child: Text(title,
@@ -343,63 +331,89 @@ class TextLink extends StatelessWidget {
   }
 }
 
-/// Small grey heading above a [SettingsGroup].
+/// Small grey heading above a [SettingsGroup], with an optional action
+/// on the right (e.g. "See all").
 class SettingsHeader extends StatelessWidget {
   final String text;
-  const SettingsHeader(this.text, {super.key});
+  final String? action;
+  final VoidCallback? onAction;
+  const SettingsHeader(this.text, {super.key, this.action, this.onAction});
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
-        child: Text(text.toUpperCase(),
-            style: AppText.body(12,
-                weight: FontWeight.w700, color: AppColors.textDim)
-                .copyWith(letterSpacing: 0.6)),
+        padding: const EdgeInsets.fromLTRB(16, 18, 8, 4),
+        child: SizedBox(
+          height: 30,
+          child: Row(children: [
+            Expanded(
+              child: Text(text.toUpperCase(),
+                  style: AppText.body(12,
+                          weight: FontWeight.w700, color: AppColors.textDim)
+                      .copyWith(letterSpacing: 0.6)),
+            ),
+            if (action != null)
+              TextButton(
+                onPressed: onAction,
+                style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    foregroundColor: AppColors.primary),
+                child: Text(action!,
+                    style: AppText.body(13.5,
+                        weight: FontWeight.w600, color: AppColors.primary)),
+              ),
+          ]),
+        ),
       );
 }
 
-/// White card of [SettingsRow]s separated by thin lines, like a phone's
-/// settings app.
+/// Rows separated by thin lines, flat on the page (no card around them),
+/// like a phone's settings app. [indent] lines the dividers up with the
+/// row text.
 class SettingsGroup extends StatelessWidget {
   final List<Widget> children;
-  const SettingsGroup({super.key, required this.children});
+  final double indent;
+  const SettingsGroup({super.key, required this.children, this.indent = 56});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      child: Column(children: [
-        for (final (i, c) in children.indexed) ...[
-          if (i > 0) const Divider(height: 1, indent: 56),
-          c,
-        ],
-      ]),
-    );
+    return Column(children: [
+      for (final (i, c) in children.indexed) ...[
+        if (i > 0) Divider(height: 1, indent: indent),
+        c,
+      ],
+    ]);
   }
 }
 
-/// One setting: icon, title, optional detail line, and a value or arrow.
+/// One row: a leading icon or picture, title, optional detail line, and a
+/// value or arrow on the right.
 class SettingsRow extends StatelessWidget {
   final Widget leading;
+  final double leadingWidth;
   final String title;
   final String? sub;
+  final Widget? subWidget;
   final String? value;
   final IconData? trailing;
+  final Color? trailingColor;
   final Color? color;
+  final Color? background;
+  final int subLines;
   final VoidCallback? onTap;
   const SettingsRow({
     super.key,
     required this.leading,
+    this.leadingWidth = 24,
     required this.title,
     this.sub,
+    this.subWidget,
     this.value,
     this.trailing = Icons.chevron_right,
+    this.trailingColor,
     this.color,
+    this.background,
+    this.subLines = 1,
     this.onTap,
   });
 
@@ -426,42 +440,74 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 54),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
-          child: Row(children: [
-            SizedBox(width: 24, child: Center(child: leading)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title,
-                      style: AppText.body(15.5,
-                          weight: FontWeight.w600,
-                          color: color ?? AppColors.text)),
-                  if (sub != null)
-                    Text(sub!,
-                        style: AppText.body(13, color: AppColors.textDim)),
-                ],
+    return Material(
+      color: background ?? Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 9, 10, 9),
+            child: Row(children: [
+              SizedBox(width: leadingWidth, child: Center(child: leading)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.body(15.5,
+                            weight: FontWeight.w600,
+                            color: color ?? AppColors.text)),
+                    if (sub != null)
+                      Text(sub!,
+                          maxLines: subLines,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.body(13, color: AppColors.textDim)),
+                    if (subWidget != null) ...[
+                      const SizedBox(height: 3),
+                      subWidget!,
+                    ],
+                  ],
+                ),
               ),
-            ),
-            if (value != null) ...[
-              const SizedBox(width: 8),
-              Text(value!,
-                  style: AppText.body(14.5, color: AppColors.textDim)),
-            ],
-            if (trailing != null) ...[
-              const SizedBox(width: 2),
-              Icon(trailing, size: 20, color: AppColors.textDim),
-            ],
-          ]),
+              if (value != null) ...[
+                const SizedBox(width: 8),
+                Text(value!,
+                    style: AppText.body(14.5, color: AppColors.textDim)),
+              ],
+              if (trailing != null) ...[
+                const SizedBox(width: 2),
+                Icon(trailing,
+                    size: 20, color: trailingColor ?? AppColors.textDim),
+              ],
+            ]),
+          ),
         ),
       ),
     );
   }
+}
+
+/// Small rounded square with a tinted icon, for list rows.
+class RowIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color? bg;
+  const RowIcon(this.icon,
+      {super.key, this.color = AppColors.primary, this.bg});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: bg ?? color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 19, color: color),
+      );
 }

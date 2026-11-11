@@ -191,8 +191,10 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _changeLocation() async {
-    await Navigator.push(context,
-        MaterialPageRoute(builder: (_) => LocationConsentScreen(lang: widget.lang)));
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => LocationConsentScreen(lang: widget.lang)));
     Backend.sync();
     _refresh();
   }
@@ -267,13 +269,14 @@ class _AccountScreenState extends State<AccountScreen> {
                 minHeight: 2, color: AppColors.primary),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              padding: const EdgeInsets.only(bottom: 24),
               children: [
                 _profileCard(signedInAs),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Notice(icon: Icons.error_outline, text: _error!),
-                ],
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    child: Notice(icon: Icons.error_outline, text: _error!),
+                  ),
                 SettingsHeader(t.get('settings')),
                 SettingsGroup(children: [
                   SettingsRow.icon(Icons.language,
@@ -337,7 +340,8 @@ class _AccountScreenState extends State<AccountScreen> {
                             builder: (_) => AboutScreen(lang: widget.lang))),
                   ),
                 ]),
-                const SizedBox(height: 20),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
                 SettingsGroup(children: [
                   SettingsRow.icon(Icons.logout,
                       title: t.get('signOut'),
@@ -356,47 +360,35 @@ class _AccountScreenState extends State<AccountScreen> {
   /// Name and sign-in address; tap to change the name.
   Widget _profileCard(String signedInAs) {
     final name = _savedName.trim();
-    return Material(
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: _busy ? null : _editName,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundColor: AppColors.primary,
-              child: name.isEmpty
-                  ? const Icon(Icons.person_outline,
-                      color: AppColors.onPrimary)
-                  : Text(name.characters.first.toUpperCase(),
-                      style: AppText.display(22,
-                          weight: FontWeight.w700,
-                          color: AppColors.onPrimary)),
+    return InkWell(
+      onTap: _busy ? null : _editName,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+        child: Row(children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: AppColors.primary,
+            child: name.isEmpty
+                ? const Icon(Icons.person_outline, color: AppColors.onPrimary)
+                : Text(name.characters.first.toUpperCase(),
+                    style: AppText.display(20,
+                        weight: FontWeight.w700, color: AppColors.onPrimary)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name.isEmpty ? t.get('addName') : name,
+                    style: AppText.display(18, weight: FontWeight.w700),
+                    overflow: TextOverflow.ellipsis),
+                Text(signedInAs,
+                    style: AppText.body(13.5, color: AppColors.textDim)),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name.isEmpty ? t.get('addName') : name,
-                      style: AppText.display(18, weight: FontWeight.w700),
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(signedInAs,
-                      style: AppText.body(13.5, color: AppColors.textDim)),
-                ],
-              ),
-            ),
-            const Icon(Icons.edit_outlined,
-                size: 20, color: AppColors.textDim),
-          ]),
-        ),
+          ),
+          const Icon(Icons.edit_outlined, size: 20, color: AppColors.textDim),
+        ]),
       ),
     );
   }

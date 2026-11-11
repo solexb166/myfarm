@@ -27,34 +27,35 @@ class _LanguageScreenState extends State<LanguageScreen> {
         child: Column(children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+              padding: const EdgeInsets.only(top: 16, bottom: 16),
               children: [
-                Row(children: [
-                  const IconTile(icon: Icons.eco, size: 32),
-                  const SizedBox(width: 10),
-                  Text(t.get('appName'),
-                      style: AppText.display(17, spacing: 0.2)),
-                ]),
-                const SizedBox(height: 28),
-                Text(t.get('chooseLanguage'),
-                    style: AppText.display(24, weight: FontWeight.w800)),
-                const SizedBox(height: 4),
-                Text(t.get('chooseLanguageSub'),
-                    style: AppText.body(14, color: AppColors.textDim)),
-                const SizedBox(height: 18),
-                Material(
-                  color: AppColors.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: AppColors.border),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: LanguageList(
-                    selected: _lang,
-                    uiLang: _lang,
-                    onPick: (code) => setState(() => _lang = code),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          const IconTile(icon: Icons.eco, size: 32),
+                          const SizedBox(width: 10),
+                          Text(t.get('appName'),
+                              style: AppText.display(17, spacing: 0.2)),
+                        ]),
+                        const SizedBox(height: 24),
+                        Text(t.get('chooseLanguage'),
+                            style:
+                                AppText.display(24, weight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text(t.get('chooseLanguageSub'),
+                            style: AppText.body(14, color: AppColors.textDim)),
+                      ]),
                 ),
+                const Divider(height: 1),
+                LanguageList(
+                  selected: _lang,
+                  uiLang: _lang,
+                  onPick: (code) => setState(() => _lang = code),
+                ),
+                const Divider(height: 1),
               ],
             ),
           ),

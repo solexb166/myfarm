@@ -25,37 +25,30 @@ class AboutScreen extends StatelessWidget {
           TopBar(title: t.get('about')),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              padding: const EdgeInsets.only(bottom: 24),
               children: [
-                Container(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
                   child: Column(children: [
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      const IconTile(icon: Icons.eco, size: 40),
+                      const IconTile(icon: Icons.eco, size: 36),
                       const SizedBox(width: 10),
-                      Text(t.get('appName'), style: AppText.display(22)),
+                      Text(t.get('appName'), style: AppText.display(21)),
                     ]),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Text(t.get('aboutBody'),
                         textAlign: TextAlign.center,
-                        style: AppText.body(14.5, color: AppColors.textDim)),
+                        style: AppText.body(14, color: AppColors.textDim)),
                     const SizedBox(height: 22),
-                    const Divider(height: 1),
-                    const SizedBox(height: 18),
                     Text(t.get('builtByShort'),
-                        style: AppText.body(12.5,
-                            weight: FontWeight.w600,
-                            color: AppColors.textDim)),
-                    const SizedBox(height: 10),
-                    Image.asset('assets/brand/afrotym.png', height: 96),
+                        style: AppText.body(12,
+                            weight: FontWeight.w600, color: AppColors.textDim)),
+                    const SizedBox(height: 6),
+                    Image.asset('assets/brand/afrotym.png', height: 84),
                   ]),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
                 SettingsGroup(children: [
                   SettingsRow.icon(Icons.public,
                       title: t.get('website'),
@@ -73,6 +66,7 @@ class AboutScreen extends StatelessWidget {
                       trailing: Icons.open_in_new,
                       onTap: () => _open(context, Links.privacyPolicy)),
                 ]),
+                const Divider(height: 1),
               ],
             ),
           ),

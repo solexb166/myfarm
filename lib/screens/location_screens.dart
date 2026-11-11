@@ -87,53 +87,74 @@ class _LocationConsentScreenState extends State<LocationConsentScreen> {
           TopBar(title: t.get('locTitle')),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+              padding: const EdgeInsets.only(bottom: 16),
               children: [
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconTile(icon: Icons.location_on_outlined),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(t.get('locHeading'), style: AppText.display(22)),
+                      const SizedBox(height: 6),
+                      Text(t.get('locWhy'),
+                          style: AppText.body(14, color: AppColors.textDim)),
+                      const SizedBox(height: 10),
+                      Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.lock_outline,
+                                size: 16, color: AppColors.info),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(t.get('locPrivacy'),
+                                  style: AppText.body(13,
+                                      color: AppColors.textDim)),
+                            ),
+                          ]),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Text(t.get('locHeading'), style: AppText.display(24)),
-                const SizedBox(height: 8),
-                Text(t.get('locWhy'),
-                    style: AppText.body(15, color: AppColors.textDim)),
                 const SizedBox(height: 14),
-                Notice(
-                  icon: Icons.lock_outline,
-                  color: AppColors.info,
-                  text: t.get('locPrivacy'),
-                ),
-                const SizedBox(height: 20),
-                for (final (mode, icon, title, sub) in [
-                  (LocationMode.gps, Icons.my_location, 'locGps', 'locGpsSub'),
-                  (
-                    LocationMode.manual,
-                    Icons.map_outlined,
-                    'locManual',
-                    'locManualSub'
+                const Divider(height: 1),
+                SettingsGroup(children: [
+                  for (final (mode, icon, title, sub) in [
+                    (
+                      LocationMode.gps,
+                      Icons.my_location,
+                      'locGps',
+                      'locGpsSub'
+                    ),
+                    (
+                      LocationMode.manual,
+                      Icons.map_outlined,
+                      'locManual',
+                      'locManualSub'
+                    ),
+                    (
+                      LocationMode.none,
+                      Icons.location_off_outlined,
+                      'locNone',
+                      'locNoneSub'
+                    ),
+                  ])
+                    _OptionCard(
+                      icon: icon,
+                      title: t.get(title),
+                      sub: t.get(sub),
+                      selected: _mode == mode,
+                      onTap:
+                          _busy ? null : () => setState(() => _mode = mode),
+                    ),
+                ]),
+                const Divider(height: 1),
+                if (_noticeKey != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Notice(
+                        icon: Icons.info_outline,
+                        color: AppColors.accent,
+                        text: t.get(_noticeKey!)),
                   ),
-                  (
-                    LocationMode.none,
-                    Icons.location_off_outlined,
-                    'locNone',
-                    'locNoneSub'
-                  ),
-                ])
-                  _OptionCard(
-                    icon: icon,
-                    title: t.get(title),
-                    sub: t.get(sub),
-                    selected: _mode == mode,
-                    onTap: _busy ? null : () => setState(() => _mode = mode),
-                  ),
-                if (_noticeKey != null) ...[
-                  const SizedBox(height: 4),
-                  Notice(
-                      icon: Icons.info_outline,
-                      color: AppColors.accent,
-                      text: t.get(_noticeKey!)),
-                ],
               ],
             ),
           ),
@@ -152,6 +173,7 @@ class _LocationConsentScreenState extends State<LocationConsentScreen> {
   }
 }
 
+/// One location choice: a flat row with a radio button.
 class _OptionCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -168,48 +190,17 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: selected ? AppColors.primarySoft : AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-              color: selected ? AppColors.primary : AppColors.border,
-              width: selected ? 1.5 : 1),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
-            child: Row(children: [
-              Icon(icon,
-                  size: 24,
-                  color: selected ? AppColors.primary : AppColors.textDim),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: AppText.body(15.5, weight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(sub,
-                        style: AppText.body(13.5, color: AppColors.textDim)),
-                  ],
-                ),
-              ),
-              Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: selected ? AppColors.primary : AppColors.textDim,
-              ),
-            ]),
-          ),
-        ),
-      ),
+    return SettingsRow(
+      leading: Icon(icon,
+          size: 22, color: selected ? AppColors.primary : AppColors.textDim),
+      title: title,
+      sub: sub,
+      subLines: 3,
+      trailing:
+          selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+      trailingColor: selected ? AppColors.primary : null,
+      background: selected ? AppColors.primarySoft.withValues(alpha: 0.5) : null,
+      onTap: onTap,
     );
   }
 }

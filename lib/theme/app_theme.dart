@@ -5,12 +5,12 @@ import 'package:google_fonts/google_fonts.dart';
 /// Every text colour here has at least 4.5:1 contrast on white.
 class AppColors {
   // Semantic tokens - use these in new code.
-  static const bg = Color(0xFFF5F6F1); // page background, warm off-white
+  static const bg = Color(0xFFFFFFFF); // page background: plain white, lists sit flat on it
   static const surface = Color(0xFFFFFFFF); // cards
   static const surfaceAlt = Color(0xFFEEF2E8); // icon tiles, subtle fills
   static const text = Color(0xFF18241A);
   static const textDim = Color(0xFF5E6B60);
-  static const border = Color(0xFFE0E5DA);
+  static const border = Color(0xFFE6E9E3);
   static const primary = Color(0xFF2E7D32); // leaf green
   static const primarySoft = Color(0xFFE3F1DF);
   static const onPrimary = Color(0xFFFFFFFF);

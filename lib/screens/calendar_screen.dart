@@ -254,7 +254,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       Expanded(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
             _SeasonHeader(
               plan: p,
@@ -263,19 +263,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
               t: t,
             ),
             for (final entry in groups.entries) ...[
-              if (entry.key.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 22, 0, 10),
-                  child: Text(entry.key,
-                      style: AppText.display(16, weight: FontWeight.w700)),
-                ),
-              for (final i in entry.value)
+              if (entry.key.isNotEmpty) SettingsHeader(entry.key),
+              for (final (j, i) in entry.value.indexed) ...[
+                if (j > 0) const Divider(height: 1, indent: 64),
                 _TaskTile(
                   task: p.tasks[i],
                   isNext: i == nextIndex,
                   upNextLabel: t.get('upNext'),
                   onToggle: () => _toggleTask(i),
                 ),
+              ],
             ],
           ],
         ),
@@ -284,6 +281,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 }
 
+/// The crop, how far into the season, and progress - flat, no card.
 class _SeasonHeader extends StatelessWidget {
   final CropPlan plan;
   final int weeksIn;
@@ -299,80 +297,63 @@ class _SeasonHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = plan.tasks.length;
     final planted = DateTime.tryParse(plan.plantedDate);
-    const on = AppColors.onPrimary;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(22),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
+            CropArt(
+                cropKey: CalendarService.cropKeyFor(plan.crop), size: 44),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(plan.crop,
-                      style: AppText.display(28, color: on, spacing: -0.6)),
-                  const SizedBox(height: 4),
+                  Text(plan.crop, style: AppText.display(20)),
                   Text(
                     [
                       t.get('weekN').replaceAll('{n}', '${weeksIn + 1}'),
                       if (planted != null)
-                        '${t.get('plantedOn')} ${DateFormat('d MMM yyyy').format(planted)}',
+                        '${t.get('plantedOn')} ${DateFormat('d MMM').format(planted)}',
                       if (plan.region.isNotEmpty) plan.region,
-                    ].join('  ·  '),
-                    style: AppText.body(13.5, color: on.withValues(alpha: 0.9)),
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.body(13, color: AppColors.textDim),
                   ),
                 ],
               ),
             ),
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: on,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              child: CropArt(
-                  cropKey: CalendarService.cropKeyFor(plan.crop),
-                  size: 40,
-                  tile: false),
-            ),
           ]),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           Row(children: [
             Expanded(
-              child: Text(t.get('progress'),
-                  style:
-                      AppText.body(13.5, weight: FontWeight.w600, color: on)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: total == 0 ? 0 : done / total,
+                  minHeight: 6,
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surfaceAlt,
+                ),
+              ),
             ),
+            const SizedBox(width: 12),
             Text(
                 t
                     .get('tasksDone')
                     .replaceAll('{done}', '$done')
                     .replaceAll('{total}', '$total'),
-                style: AppText.body(13.5, weight: FontWeight.w700, color: on)),
+                style: AppText.body(13, weight: FontWeight.w600)),
           ]),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: total == 0 ? 0 : done / total,
-              minHeight: 8,
-              color: on,
-              backgroundColor: on.withValues(alpha: 0.25),
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
+/// One task: tick it off; the next task is marked and shows its detail.
 class _TaskTile extends StatelessWidget {
   final CropTask task;
   final bool isNext;
@@ -389,92 +370,77 @@ class _TaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final done = task.done;
     final date = DateTime.tryParse(task.date);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-              color: isNext ? AppColors.primary : AppColors.border,
-              width: isNext ? 1.5 : 1),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onToggle,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 10, 14, 14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Checkbox(
-                  value: done,
-                  onChanged: (_) => onToggle(),
-                  shape: const CircleBorder(),
-                  activeColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.textDim, width: 1.6),
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Expanded(
-                            child: Text(task.title,
-                                style: AppText.body(15.5,
-                                        weight: FontWeight.w700,
-                                        color: done
-                                            ? AppColors.textDim
-                                            : AppColors.text)
-                                    .copyWith(
-                                        decoration: done
-                                            ? TextDecoration.lineThrough
-                                            : null)),
-                          ),
-                          if (date != null)
-                            Text(DateFormat('d MMM').format(date),
-                                style: AppText.body(13,
-                                    weight: FontWeight.w600,
-                                    color: AppColors.textDim)),
-                        ]),
-                        const SizedBox(height: 4),
-                        Row(children: [
-                          Icon(taskIcon(task.type),
-                              size: 15, color: AppColors.textDim),
-                          const SizedBox(width: 5),
-                          Text(task.stage,
+    return Material(
+      color: isNext ? AppColors.primarySoft.withValues(alpha: 0.5) : null,
+      child: InkWell(
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 4, 16, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: done,
+                onChanged: (_) => onToggle(),
+                shape: const CircleBorder(),
+                activeColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.textDim, width: 1.6),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 9),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Expanded(
+                          child: Text(task.title,
+                              style: AppText.body(15,
+                                      weight: FontWeight.w600,
+                                      color: done
+                                          ? AppColors.textDim
+                                          : AppColors.text)
+                                  .copyWith(
+                                      decoration: done
+                                          ? TextDecoration.lineThrough
+                                          : null)),
+                        ),
+                        if (date != null)
+                          Text(DateFormat('d MMM').format(date),
+                              style: AppText.body(12.5,
+                                  weight: FontWeight.w600,
+                                  color: AppColors.textDim)),
+                      ]),
+                      const SizedBox(height: 2),
+                      Row(children: [
+                        Icon(taskIcon(task.type),
+                            size: 14, color: AppColors.textDim),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(task.stage,
+                              overflow: TextOverflow.ellipsis,
                               style:
                                   AppText.body(12.5, color: AppColors.textDim)),
-                          if (isNext) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.primarySoft,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(upNextLabel,
-                                  style: AppText.body(11.5,
-                                      weight: FontWeight.w700,
-                                      color: AppColors.primary)),
-                            ),
-                          ],
-                        ]),
-                        if (!done) ...[
-                          const SizedBox(height: 8),
-                          Text(task.detail,
-                              style: AppText.body(14, color: AppColors.text)),
+                        ),
+                        if (isNext) ...[
+                          const SizedBox(width: 8),
+                          Text(upNextLabel,
+                              style: AppText.body(12.5,
+                                  weight: FontWeight.w700,
+                                  color: AppColors.primary)),
                         ],
+                      ]),
+                      if (isNext && !done) ...[
+                        const SizedBox(height: 4),
+                        Text(task.detail,
+                            style: AppText.body(13.5, color: AppColors.text)),
                       ],
-                    ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
